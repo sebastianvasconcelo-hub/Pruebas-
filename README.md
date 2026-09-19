@@ -30,7 +30,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 163 tests, todos offline
+npm test          # 175 tests, todos offline
 ```
 
 ### Comparar
@@ -59,6 +59,28 @@ el encabezado "Socio", junto a un "Unete al Club Alvi", y el precio regular
 `requiereMembresia` y el motor solo las aplica si tu perfil declara esa
 membresia; si no, usa el precio regular y avisa cuanto te estas perdiendo.
 Se configura en `src/precios/reglas.ts`.
+
+### La canasta habitual
+
+El caso de uso real no es "cual es el arroz mas barato" sino "mi leche Colun
+semidescremada de siempre, donde conviene comprarla hoy". Los productos son
+fijos, las marcas tambien, y lo que cambia son las ofertas.
+
+```bash
+npm run canasta
+npm run canasta -- --fecha 2026-09-24
+```
+
+Recorre el catalogo completo, trae los precios de cada tienda y **pone primero
+lo que cambio de tienda desde la ultima corrida**. Esa es la informacion que
+justifica la herramienta: el producto que compras siempre en una cadena y que
+esta semana, excepcionalmente, conviene en la otra.
+
+Tambien calcula lo que cuesta repartir la compra frente a hacerla toda en una
+sola tienda, contando solo las tiendas que cubren la canasta entera: un total
+bajo con media cobertura no es comparable.
+
+El historial queda en `historial.json`.
 
 ### Producto canonico: comparar el mismo articulo
 
@@ -340,6 +362,9 @@ src/
     inspeccionar.ts        analiza un archivo ya descargado, sin red
     emparejar.ts           registra un producto canonico, preguntando lo que no puede probar
     catalogo.ts            muestra el catalogo canonico
+    canasta.ts             la compra completa: donde conviene cada producto hoy
+  canasta/
+    evaluar.ts             recorre la canasta y detecta cambios de tienda
   canonico/
     tipos.ts               producto canonico y equivalencias por tienda
     similitud.ts           puntaje de parecido; EAN es prueba, el resto indicio

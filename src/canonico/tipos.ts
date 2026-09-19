@@ -30,6 +30,8 @@ export interface ProductoCanonico {
   nombre: string;
   /** Unidades que consumes al mes. Habilita el costo de bodega y mejorCantidad. */
   consumoMensual?: number;
+  /** Cuantas unidades llevas normalmente en cada compra. Por defecto 1. */
+  cantidadHabitual?: number;
   notas?: string;
   equivalencias: Equivalencia[];
 }

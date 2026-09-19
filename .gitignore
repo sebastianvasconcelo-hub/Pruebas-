@@ -2,6 +2,7 @@ node_modules/
 dist/
 .env
 *.log
+historial.json
 fixtures/*.json
 fixtures/*.html
 !fixtures/*.sintetico.json
