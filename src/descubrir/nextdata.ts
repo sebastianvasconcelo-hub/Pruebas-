@@ -30,27 +30,47 @@ export function extraerBuildId(nextData: unknown): string | null {
   return null;
 }
 
-const CLAVE_PRECIO = /^(price|prices?|precio|valor|amount|sellingprice|listprice|value)/i;
+const CLAVE_PRECIO =
+  /^(price|precio|valor|amount|sellingprice|listprice|pricewithoutdiscount|bestprice|spotprice)/i;
 const CLAVE_NOMBRE = /^(name|nombre|title|titulo|productname|displayname|description|descripcion)$/i;
 
 function esNumeroUtil(v: unknown): boolean {
-  return typeof v === 'number' && Number.isFinite(v) && v > 0;
-}
-
-/** Un objeto parece producto si tiene algo que suena a nombre y algo que suena a precio. */
-function pareceProducto(o: Record<string, unknown>): boolean {
-  let nombre = false;
-  let precio = false;
-  for (const [k, v] of Object.entries(o)) {
-    if (!nombre && CLAVE_NOMBRE.test(k) && typeof v === 'string' && v.trim() !== '') nombre = true;
-    // El precio puede venir suelto o anidado (price: { value: 1490 }).
-    if (!precio && CLAVE_PRECIO.test(k)) {
-      if (esNumeroUtil(v)) precio = true;
-      else if (v && typeof v === 'object' && Object.values(v).some(esNumeroUtil)) precio = true;
-    }
-    if (nombre && precio) return true;
+  if (typeof v === 'number') return Number.isFinite(v) && v > 0;
+  // Muchos storefronts serializan el precio como texto: "1490" o "$1.490".
+  if (typeof v === 'string' && /^\s*\$?\s*[\d.,]+\s*$/.test(v) && /\d/.test(v)) {
+    const n = Number(v.replace(/[^\d.,]/g, '').replace(/\./g, '').replace(',', '.'));
+    return Number.isFinite(n) && n > 0;
   }
   return false;
+}
+
+/**
+ * Busca un precio en el subarbol del objeto, no solo en su primer nivel.
+ *
+ * La forma de VTEX deja el precio muy abajo
+ * (producto.items[].sellers[].commertialOffer.Price), asi que exigirlo al lado
+ * del nombre descarta justamente los catalogos que nos interesan.
+ */
+function tienePrecio(v: unknown, profundidad = 0): boolean {
+  if (profundidad > 5 || v === null || typeof v !== 'object') return false;
+  if (Array.isArray(v)) return v.some((x) => tienePrecio(x, profundidad + 1));
+  for (const [k, hijo] of Object.entries(v)) {
+    if (CLAVE_PRECIO.test(k)) {
+      if (esNumeroUtil(hijo)) return true;
+      // Envoltorios tipo price: { value: 1490 } o price: { amount, currency }.
+      if (hijo && typeof hijo === 'object' && Object.values(hijo).some(esNumeroUtil)) return true;
+    }
+    if (tienePrecio(hijo, profundidad + 1)) return true;
+  }
+  return false;
+}
+
+/** Un objeto parece producto si tiene algo que suena a nombre y un precio en su subarbol. */
+function pareceProducto(o: Record<string, unknown>): boolean {
+  const nombre = Object.entries(o).some(
+    ([k, v]) => CLAVE_NOMBRE.test(k) && typeof v === 'string' && v.trim() !== '',
+  );
+  return nombre && tienePrecio(o);
 }
 
 export interface Candidato {
@@ -189,4 +209,86 @@ export function extraerJsonIncrustado(
     }
   }
   return encontrados;
+}
+
+export interface ClaveVista {
+  clave: string;
+  veces: number;
+  ruta: string;
+  ejemplo: unknown;
+}
+
+/**
+ * Inventario de claves que coinciden con un patron, con un ejemplo de cada una.
+ *
+ * Sirve para responder "que trae realmente este payload" sin volcar megabytes
+ * de JSON a la consola.
+ */
+export function inventarioClaves(json: unknown, patron: RegExp, maxProfundidad = 14): ClaveVista[] {
+  const vistas = new Map<string, ClaveVista>();
+  const vistos = new WeakSet<object>();
+
+  function recorrer(nodo: unknown, ruta: string, prof: number): void {
+    if (prof > maxProfundidad || nodo === null || typeof nodo !== 'object') return;
+    if (vistos.has(nodo)) return;
+    vistos.add(nodo);
+
+    if (Array.isArray(nodo)) {
+      // Con los dos primeros elementos basta para conocer la forma.
+      nodo.slice(0, 2).forEach((hijo, i) => recorrer(hijo, `${ruta}[${i}]`, prof + 1));
+      return;
+    }
+
+    for (const [k, v] of Object.entries(nodo)) {
+      const rutaHija = ruta === '' ? k : `${ruta}.${k}`;
+      if (patron.test(k)) {
+        const previa = vistas.get(k);
+        if (previa) previa.veces++;
+        else if (typeof v !== 'object' || v === null) {
+          vistas.set(k, { clave: k, veces: 1, ruta: rutaHija, ejemplo: v });
+        } else {
+          vistas.set(k, { clave: k, veces: 1, ruta: rutaHija, ejemplo: resumir(v) });
+        }
+      }
+      recorrer(v, rutaHija, prof + 1);
+    }
+  }
+
+  recorrer(json, '', 0);
+  return [...vistas.values()].sort((a, b) => b.veces - a.veces);
+}
+
+/** Version acotada de un valor, para mostrarlo sin inundar la consola. */
+function resumir(v: unknown): unknown {
+  if (Array.isArray(v)) return `[${v.length} elementos]`;
+  if (v && typeof v === 'object') return `{${Object.keys(v).slice(0, 8).join(', ')}}`;
+  return v;
+}
+
+/** Rutas cuyo valor de texto contiene `texto`. Confirma si el dato esta o no. */
+export function buscarTexto(json: unknown, texto: string, maxResultados = 20): string[] {
+  const objetivo = texto.toLowerCase();
+  const rutas: string[] = [];
+  const vistos = new WeakSet<object>();
+
+  function recorrer(nodo: unknown, ruta: string, prof: number): void {
+    if (rutas.length >= maxResultados || prof > 20) return;
+    if (typeof nodo === 'string') {
+      if (nodo.toLowerCase().includes(objetivo)) rutas.push(`${ruta} = ${nodo.slice(0, 80)}`);
+      return;
+    }
+    if (nodo === null || typeof nodo !== 'object' || vistos.has(nodo)) return;
+    vistos.add(nodo);
+
+    if (Array.isArray(nodo)) {
+      nodo.forEach((hijo, i) => recorrer(hijo, `${ruta}[${i}]`, prof + 1));
+      return;
+    }
+    for (const [k, v] of Object.entries(nodo)) {
+      recorrer(v, ruta === '' ? k : `${ruta}.${k}`, prof + 1);
+    }
+  }
+
+  recorrer(json, '', 0);
+  return rutas;
 }

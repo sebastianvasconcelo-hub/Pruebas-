@@ -27,7 +27,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 64 tests, todos offline
+npm test          # 74 tests, todos offline
 ```
 
 ### Paso 1: validar que las APIs responden (esto lo corres tu)
@@ -114,9 +114,25 @@ reporta donde estan y que claves de precio traen, y guarda el payload en
 `fixtures/`. Siempre guarda tambien el HTML crudo, que sirve de evidencia
 aunque la extraccion falle.
 
-Si tampoco aparece nada, los datos se cargan por XHR despues de pintar y la
-respuesta definitiva la da el sitio: DevTools -> Network -> filtro Fetch/XHR ->
-buscar un producto. Esa peticion es la ruta a implementar.
+### Cuando la extraccion no encuentra nada
+
+`npm run nextdata` guarda siempre el HTML crudo, asi que la pregunta se puede
+responder sin volver a la red:
+
+```bash
+npm run inspeccionar -- fixtures/alvi-arroz.html --buscar tucapel
+```
+
+Distingue los dos casos que importan:
+
+- **El nombre aparece pero ninguna lista pasa el filtro** -> el detector esta
+  mal y hay que ajustarlo. Para eso el comando imprime el inventario de claves
+  relevantes con un ejemplo y su ruta.
+- **El nombre no aparece en ninguna parte** -> el catalogo no viaja en el HTML
+  y hay que ir por la peticion XHR.
+
+En el segundo caso la respuesta la da el sitio: DevTools -> Network -> filtro
+Fetch/XHR -> buscar un producto. Esa peticion es la ruta a implementar.
 
 ## Que falta validar (en orden de importancia)
 
@@ -180,6 +196,7 @@ src/
     probe.ts               valida las APIs reales
     fingerprint.ts         descubre plataforma y rutas cuando el probe falla
     nextdata.ts            extrae productos del HTML de storefronts Next.js
+    inspeccionar.ts        analiza un archivo ya descargado, sin red
   descubrir/
     nextdata.ts            __NEXT_DATA__, chunks de App Router y busqueda de productos
     comparar.ts            compara un producto entre tiendas
