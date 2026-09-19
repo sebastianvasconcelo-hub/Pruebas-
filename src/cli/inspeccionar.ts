@@ -15,15 +15,22 @@ import {
   extraerJsonIncrustado,
   extraerNextData,
   inventarioClaves,
+  porRuta,
 } from '../descubrir/nextdata.js';
 
 const args = process.argv.slice(2);
 const ruta = args.find((a) => !a.startsWith('--'));
 const i = args.indexOf('--buscar');
 const termino = i >= 0 ? args[i + 1] : undefined;
+const j = args.indexOf('--mostrar');
+const rutaPedida = j >= 0 ? args[j + 1] : undefined;
+const k = args.indexOf('--bloque');
+const bloquePedido = k >= 0 ? Number(args[k + 1]) : 0;
 
 if (!ruta) {
-  console.error('Uso: npm run inspeccionar -- <archivo> [--buscar <texto>]');
+  console.error(
+    'Uso: npm run inspeccionar -- <archivo> [--buscar <texto>] [--mostrar <ruta>] [--bloque N]',
+  );
   process.exit(1);
 }
 
@@ -96,6 +103,13 @@ if (inventario.length > 0) {
 } else {
   console.log('\nNo hay ninguna clave que suene a producto o precio.');
   console.log('Eso confirma que el catalogo NO viaja en este archivo.');
+}
+
+if (rutaPedida) {
+  console.log(`\nCONTENIDO DE bloque[${bloquePedido}].${rutaPedida}\n`);
+  const valor = porRuta(bloques[bloquePedido], rutaPedida);
+  if (valor === undefined) console.log('   esa ruta no existe en ese bloque');
+  else console.log(JSON.stringify(valor, null, 2).slice(0, 6000));
 }
 
 if (termino) {

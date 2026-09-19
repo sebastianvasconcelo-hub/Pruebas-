@@ -1,6 +1,6 @@
 import type { Oferta } from '../tipos.js';
 
-export type Motor = 'vtex' | 'propio';
+export type Motor = 'vtex' | 'nextdata' | 'jsonld' | 'desconocido';
 
 export interface TiendaConfig {
   id: string;
@@ -9,6 +9,8 @@ export interface TiendaConfig {
   motor: Motor;
   /** Canal de ventas VTEX. Los precios cambian por tienda/comuna. */
   salesChannel?: string;
+  /** Ruta de busqueda del sitio, con {q} donde va el termino. Verificada a mano. */
+  busqueda?: string;
   /** false = todavia no implementado; la CLI lo salta con un aviso. */
   soportado: boolean;
   notas?: string;

@@ -27,7 +27,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 74 tests, todos offline
+npm test          # 82 tests, todos offline
 ```
 
 ### Paso 1: validar que las APIs responden (esto lo corres tu)
@@ -133,6 +133,41 @@ Distingue los dos casos que importan:
 
 En el segundo caso la respuesta la da el sitio: DevTools -> Network -> filtro
 Fetch/XHR -> buscar un producto. Esa peticion es la ruta a implementar.
+
+## Donde estan los datos, confirmado
+
+Verificado el 2026-09-19 sobre el HTML real de cada sitio.
+
+### Alvi: `__NEXT_DATA__`, esquema completo
+
+```
+props.pageProps.dehydratedState.queries[0].state.data.availableProducts  -> 50 productos
+```
+
+Trae `productId`, `itemId`, `sku`, `ean`, `name`, `nameComplete`, `brand`,
+`measurementUnit`, `unitMultiplier`, `sellers[].price / listPrice /
+priceWithoutDiscount / inOffer` y, lo mas importante, **`priceSteps`**: las
+escalas mayoristas vienen estructuradas, con `promotionalPrice`, en vez de
+texto de promocion. El parser de "Llevando 3 o mas $X" queda como respaldo para
+otras cadenas, no hace falta para Alvi.
+
+El gramaje tambien viene estructurado (`measurementUnit`, `unitMultiplier`), asi
+que deducirlo del nombre pasa a ser el plan B.
+
+### Jumbo: JSON-LD de schema.org, parcial
+
+El catalogo no viaja como datos de aplicacion, pero el payload RSC incluye un
+`ItemList` de schema.org con 40 resultados: `name`, `brand.name`, `url` y
+`offers.price`.
+
+**Limitacion:** schema.org define un solo precio por oferta. No se puede
+distinguir precio normal de precio Prime, ni leer escalas, ni el EAN. Sirve
+para comparar, no para modelar tu membresia.
+
+### Santa Isabel, Unimarc y Lider
+
+Sin verificar. Quedan marcadas como no soportadas en el registro de tiendas
+hasta comprobar su ruta de busqueda y su formato.
 
 ## Que falta validar (en orden de importancia)
 

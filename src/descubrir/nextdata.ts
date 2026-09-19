@@ -292,3 +292,17 @@ export function buscarTexto(json: unknown, texto: string, maxResultados = 20): s
   recorrer(json, '', 0);
   return rutas;
 }
+
+/** Navega una ruta tipo "a.b[0].c" dentro de un JSON. undefined si no existe. */
+export function porRuta(json: unknown, ruta: string): unknown {
+  const partes = ruta
+    .replace(/\[(\d+)\]/g, '.$1')
+    .split('.')
+    .filter((p) => p !== '');
+  let actual: unknown = json;
+  for (const parte of partes) {
+    if (actual === null || typeof actual !== 'object') return undefined;
+    actual = (actual as Record<string, unknown>)[parte];
+  }
+  return actual;
+}
