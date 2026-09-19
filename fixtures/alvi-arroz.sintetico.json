@@ -1,0 +1,54 @@
+[
+  {
+    "productId": "100001",
+    "productName": "Arroz Grado 1 Tucapel 1 kg",
+    "brand": "Tucapel",
+    "linkText": "arroz-grado-1-tucapel-1-kg",
+    "items": [
+      {
+        "itemId": "200001",
+        "ean": "7801610000015",
+        "name": "Arroz Grado 1 Tucapel 1 kg",
+        "sellers": [
+          {
+            "sellerId": "1",
+            "sellerDefault": true,
+            "commertialOffer": {
+              "Price": 1490,
+              "ListPrice": 1690,
+              "PriceWithoutDiscount": 1690,
+              "AvailableQuantity": 120,
+              "Teasers": [{ "Name": "Llevando 3 o mas $1.290" }],
+              "DiscountHighLight": []
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "productId": "100002",
+    "productName": "Arroz Grado 2 Miraflores 5 kg",
+    "brand": "Miraflores",
+    "linkText": "arroz-grado-2-miraflores-5-kg",
+    "items": [
+      {
+        "itemId": "200002",
+        "ean": "7801610000022",
+        "name": "Arroz Grado 2 Miraflores 5 kg",
+        "sellers": [
+          {
+            "sellerId": "1",
+            "sellerDefault": true,
+            "commertialOffer": {
+              "Price": 5990,
+              "ListPrice": 5990,
+              "AvailableQuantity": 40,
+              "Teasers": []
+            }
+          }
+        ]
+      }
+    ]
+  }
+]
