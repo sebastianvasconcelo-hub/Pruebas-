@@ -265,16 +265,48 @@ function resumir(v: unknown): unknown {
   return v;
 }
 
-/** Rutas cuyo valor de texto contiene `texto`. Confirma si el dato esta o no. */
+/**
+ * Rutas cuyo valor contiene `texto`. Confirma si el dato esta o no.
+ *
+ * Compara tambien contra numeros: un precio viaja como 4544, no como "4544",
+ * y buscar solo en strings lo daria por ausente.
+ */
 export function buscarTexto(json: unknown, texto: string, maxResultados = 20): string[] {
   const objetivo = texto.toLowerCase();
+  // Un numero se busca por igualdad exacta: "4544" no debe calzar con 145447.
+  const comoNumero = /^\d+(?:[.,]\d+)?$/.test(objetivo)
+    ? Number(objetivo.replace(/\./g, '').replace(',', '.'))
+    : null;
   const rutas: string[] = [];
   const vistos = new WeakSet<object>();
+
+  /**
+   * Busca el numero como cifra completa dentro de un texto.
+   *
+   * Por substring, "4544" calzaria con el SKU "145447". Se compara cada grupo
+   * de digitos por separado, quitando los separadores de miles, de modo que
+   * "$4.544 x Kg" si calza y "145447" no.
+   */
+  function contieneCifra(texto: string, objetivo: number): boolean {
+    for (const m of texto.matchAll(/\d[\d.,]*/g)) {
+      const n = Number(m[0].replace(/[.,](?=\d{3}(?:\D|$))/g, '').replace(',', '.'));
+      if (n === objetivo) return true;
+    }
+    return false;
+  }
 
   function recorrer(nodo: unknown, ruta: string, prof: number): void {
     if (rutas.length >= maxResultados || prof > 20) return;
     if (typeof nodo === 'string') {
-      if (nodo.toLowerCase().includes(objetivo)) rutas.push(`${ruta} = ${nodo.slice(0, 80)}`);
+      const calza =
+        comoNumero !== null
+          ? contieneCifra(nodo, comoNumero)
+          : nodo.toLowerCase().includes(objetivo);
+      if (calza) rutas.push(`${ruta} = ${nodo.slice(0, 80)}`);
+      return;
+    }
+    if (typeof nodo === 'number') {
+      if (comoNumero !== null && nodo === comoNumero) rutas.push(`${ruta} = ${nodo}`);
       return;
     }
     if (nodo === null || typeof nodo !== 'object' || vistos.has(nodo)) return;

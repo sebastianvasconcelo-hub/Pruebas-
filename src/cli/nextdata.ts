@@ -36,12 +36,21 @@ const NAVEGADOR = {
 
 await mkdir('fixtures', { recursive: true });
 
+/**
+ * Nombre de archivo distintivo.
+ *
+ * Con el termino buscado si lo hay; si no, con el ultimo tramo de la ruta, para
+ * que la ficha de un producto no pise el HTML de una busqueda anterior.
+ */
 function nombreArchivo(url: URL): string {
   const host = url.hostname.replace(/^www\./, '').split('.')[0]!;
-  const q = (url.searchParams.get('q') ?? url.searchParams.get('query') ?? 'busqueda')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-');
-  return `${host}-${q}`;
+  const termino =
+    url.searchParams.get('q') ??
+    url.searchParams.get('query') ??
+    url.searchParams.get('ft') ??
+    url.pathname.split('/').filter((t) => t !== '' && t !== 'p').pop() ??
+    'pagina';
+  return `${host}-${termino.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 50)}`;
 }
 
 /** Endpoint de navegacion cliente de Next.js: suele traer las mismas props en JSON puro. */

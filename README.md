@@ -29,7 +29,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 136 tests, todos offline
+npm test          # 143 tests, todos offline
 ```
 
 ### Comparar
@@ -223,9 +223,23 @@ El catalogo no viaja como datos de aplicacion, pero el payload RSC incluye un
 `ItemList` de schema.org con 40 resultados: `name`, `brand.name`, `url` y
 `offers.price`.
 
-**Limitacion:** schema.org define un solo precio por oferta. No se puede
-distinguir precio normal de precio Prime, ni leer escalas, ni el EAN. Sirve
-para comparar, no para modelar tu membresia.
+**Limitacion:** schema.org define un solo precio por oferta. El ItemList de la
+busqueda no distingue precio normal de precio Prime, ni trae escalas ni EAN.
+Sirve para comparar, no para modelar la membresia.
+
+La ficha de producto si muestra los tres precios (lista tachada, precio vigente
+y "Prime Paga $X"), asi que el dato existe; falta confirmar si viaja en el HTML
+de la ficha o llega por XHR. Para averiguarlo, sobre la URL de un producto con
+precio Prime:
+
+```bash
+npm run nextdata -- "https://www.jumbo.cl/<producto>/p"
+npm run inspeccionar -- fixtures/jumbo-<producto>.html --buscar 4544
+```
+
+donde 4544 es el precio Prime que muestra la ficha. La busqueda compara cifras
+completas, asi que encuentra el valor tanto si viaja como numero (4544) como
+dentro de un texto ("$4.544 x Kg"), sin confundirlo con un SKU que lo contenga.
 
 ### Santa Isabel, Unimarc y Lider
 

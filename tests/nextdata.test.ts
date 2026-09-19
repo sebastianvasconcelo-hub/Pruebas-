@@ -223,3 +223,38 @@ describe('buscarTexto', () => {
     expect(buscarTexto(muchos, 'arroz', 5)).toHaveLength(5);
   });
 });
+
+describe('buscarTexto con numeros', () => {
+  // El precio Prime de Jumbo viaja como numero, no como texto.
+  const json = { oferta: { precio: 5890, prime: 4544, lista: 6990 }, sku: '145447' };
+
+  it('encuentra un precio guardado como numero', () => {
+    expect(buscarTexto(json, '4544')).toEqual(['oferta.prime = 4544']);
+  });
+
+  it('no confunde 4544 con un numero que lo contiene', () => {
+    expect(buscarTexto(json, '4544').join(' ')).not.toContain('145447');
+  });
+
+  it('sigue encontrando el mismo valor escrito como texto', () => {
+    expect(buscarTexto({ precio: '4544' }, '4544')).toEqual(['precio = 4544']);
+  });
+
+  it('acepta el numero con separador de miles', () => {
+    expect(buscarTexto(json, '4.544')).toEqual(['oferta.prime = 4544']);
+  });
+});
+
+describe('buscarTexto: numeros dentro de texto', () => {
+  it('encuentra el precio dentro del ppum de la tienda', () => {
+    expect(buscarTexto({ ppum: '$4.544 x Kg' }, '4544')).toEqual(['ppum = $4.544 x Kg']);
+  });
+
+  it('no calza con un numero mayor que lo contiene', () => {
+    expect(buscarTexto({ sku: '145447' }, '4544')).toEqual([]);
+  });
+
+  it('no calza con una parte de un decimal', () => {
+    expect(buscarTexto({ peso: '1,5' }, '15')).toEqual([]);
+  });
+});
