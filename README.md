@@ -27,7 +27,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 47 tests, todos offline
+npm test          # 56 tests, todos offline
 ```
 
 ### Paso 1: validar que las APIs responden (esto lo corres tu)
@@ -66,18 +66,44 @@ Ejecutado el 2026-09-19 desde una conexion residencial en Chile:
 | Unimarc | HTTP 500 |
 
 **404, no 403**: no es un bloqueo anti-bot, la ruta simplemente no existe en el
-dominio publico. El `content-type: text/html` indica que respondio la pagina de
-error del storefront, lo que es coherente con una aplicacion propia que no
-enruta `/api/catalog_system/*` hacia VTEX aunque el catalogo por detras si lo
-sea.
+dominio publico.
 
-Para resolverlo sin adivinar hay `npm run fingerprint`, que detecta la
-plataforma por cabeceras y por rastros en el HTML, y prueba una bateria de
-rutas candidatas (catalogo clasico, Intelligent Search, sessions, facets).
+`npm run fingerprint` explico por que. Las cinco cadenas son storefronts
+**Next.js**:
 
-Si ninguna sirve, la respuesta definitiva la da el propio sitio: DevTools ->
-Network -> filtro Fetch/XHR -> buscar un producto. La peticion que devuelve los
-productos es la ruta que hay que implementar.
+| Cadena | Rastros | Rutas VTEX probadas |
+|---|---|---|
+| Jumbo | vtexassets + Next.js, tras CloudFront | 404 en las 5 |
+| Santa Isabel | vtexassets, `server: nginx, Cencosud` | 404 en las 5 |
+| Alvi | Next.js | 404 en las 5 |
+| Unimarc | Next.js | 500 en 4, 404 en 1 |
+| Lider | Next.js | 404 en las 5 |
+
+Jumbo y Santa Isabel siguen sirviendo imagenes desde `vtexassets.com`, asi que
+el catalogo por detras sigue siendo VTEX: lo que cambio es que Cencosud puso un
+storefront propio delante y el borde dejo de enrutar el API de plataforma al
+dominio publico.
+
+### Camino actual: leer el HTML, no el API
+
+Una app Next.js tiene que entregarle los datos al navegador, y normalmente los
+incrusta en `<script id="__NEXT_DATA__">`. Si los productos vienen ahi, no hace
+falta API:
+
+```bash
+npm run nextdata -- "https://www.jumbo.cl/search?q=arroz"
+```
+
+Hay que pasarle la URL real de busqueda del sitio (la que queda en la barra de
+direcciones al buscar), porque cada cadena usa la suya y adivinarla solo
+produce 404 sin informacion. El comando extrae el `__NEXT_DATA__`, recorre el
+JSON buscando arreglos que parezcan productos, reporta donde estan y que claves
+de precio traen, y guarda el payload en `fixtures/`. Si el HTML no alcanza,
+reintenta contra `/_next/data/<buildId>/<ruta>.json`.
+
+Si tampoco aparece nada, los datos se cargan por XHR despues de pintar y la
+respuesta definitiva la da el sitio: DevTools -> Network -> filtro Fetch/XHR ->
+buscar un producto. Esa peticion es la ruta a implementar.
 
 ## Que falta validar (en orden de importancia)
 
@@ -140,6 +166,9 @@ src/
   cli/
     probe.ts               valida las APIs reales
     fingerprint.ts         descubre plataforma y rutas cuando el probe falla
+    nextdata.ts            extrae productos del HTML de storefronts Next.js
+  descubrir/
+    nextdata.ts            parseo de __NEXT_DATA__ y busqueda de productos
     comparar.ts            compara un producto entre tiendas
 ```
 

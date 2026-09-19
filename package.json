@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "fingerprint": "tsx src/cli/fingerprint.ts"
+    "fingerprint": "tsx src/cli/fingerprint.ts",
+    "nextdata": "tsx src/cli/nextdata.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
