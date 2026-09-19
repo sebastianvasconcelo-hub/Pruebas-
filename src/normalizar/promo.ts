@@ -95,9 +95,20 @@ export function consolidar(escalas: Escala[]): Escala[] {
   return [...porMin.values()].sort((a, b) => a.minUnidades - b.minUnidades);
 }
 
-/** La escala mas conveniente para una cantidad dada, si existe. */
-export function escalaAplicable(escalas: Escala[], cantidad: number): Escala | null {
-  const candidatas = escalas.filter((e) => cantidad >= e.minUnidades);
+/**
+ * La escala mas conveniente para una cantidad dada, si existe.
+ *
+ * Los tramos marcados `requiereMembresia` se descartan cuando no se es socio:
+ * prometer un precio que en caja no se consigue es peor que no comparar.
+ */
+export function escalaAplicable(
+  escalas: Escala[],
+  cantidad: number,
+  opts: { esSocio?: boolean } = {},
+): Escala | null {
+  const candidatas = escalas.filter(
+    (e) => cantidad >= e.minUnidades && (!e.requiereMembresia || opts.esSocio === true),
+  );
   if (candidatas.length === 0) return null;
   return candidatas.reduce((a, b) => (b.precioUnitario < a.precioUnitario ? b : a));
 }

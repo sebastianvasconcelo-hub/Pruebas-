@@ -5,6 +5,12 @@ export type CLP = number;
 export interface Escala {
   minUnidades: number;
   precioUnitario: CLP;
+  /**
+   * El tramo exige membresia ademas de la cantidad. Alvi publica sus
+   * priceSteps bajo el encabezado "Socio": sin Club Alvi se paga el precio
+   * regular por mucho que lleves 10 unidades.
+   */
+  requiereMembresia?: boolean;
   /** Texto original del que se dedujo, para poder auditar el parser. */
   origen?: string;
 }

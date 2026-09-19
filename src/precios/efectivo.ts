@@ -71,12 +71,24 @@ export function precioEfectivo(
     notas.push(`descuento adicional de membresia ${(membresia.descuentoAdicional * 100).toFixed(1)}%`);
   }
 
-  // 2. Escalas por cantidad: solo si mejoran el precio ya obtenido.
-  const escala = escalaAplicable(oferta.escalas, cantidad);
+  // 2. Escalas por cantidad: solo si mejoran el precio ya obtenido, y solo las
+  //    que puedes usar realmente (hay tramos que exigen ser socio).
+  const esSocio = membresia?.usarPrecioSocio === true;
+  const escala = escalaAplicable(oferta.escalas, cantidad, { esSocio });
   if (escala && escala.precioUnitario < unitario) {
     unitario = escala.precioUnitario;
     origen = 'escala';
     notas.push(`escala desde ${escala.minUnidades} un: ${escala.origen ?? 'sin texto'}`);
+  } else if (!esSocio && oferta.escalas.some((e) => e.requiereMembresia)) {
+    const mejor = oferta.escalas
+      .filter((e) => e.requiereMembresia && cantidad >= e.minUnidades)
+      .sort((a, b) => a.precioUnitario - b.precioUnitario)[0];
+    if (mejor) {
+      notas.push(
+        `hay precio socio de $${Math.round(mejor.precioUnitario).toLocaleString('es-CL')} ` +
+          `desde ${mejor.minUnidades} un que no se aplica: no eres socio de ${oferta.tienda}`,
+      );
+    }
   }
 
   const subtotal = unitario * cantidad;

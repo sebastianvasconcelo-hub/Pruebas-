@@ -9,10 +9,13 @@ import type { TiendaConfig } from './tipos.js';
  * props.pageProps.dehydratedState.queries[N].state.data.availableProducts
  * y se repiten en props.pageProps.intelliSearchData.availableProducts.
  *
- * Alvi NO usa precio de socio: price, listPrice y priceWithoutDiscount vienen
- * iguales y el descuento mayorista esta en `priceSteps`, estructurado, con
- * minQuantity y promotionalPrice. Eso hace innecesario el parser de textos de
- * promocion para esta cadena.
+ * Alvi no usa un campo de precio de socio: price, listPrice y
+ * priceWithoutDiscount vienen iguales (el "precio regular" de la ficha) y todo
+ * el descuento esta en `priceSteps`, estructurado, con minQuantity y
+ * promotionalPrice. Eso hace innecesario el parser de textos de promocion.
+ *
+ * Esos tramos se publican en la ficha bajo el encabezado "Socio", asi que
+ * exigen Club Alvi ademas de la cantidad y se marcan `requiereMembresia`.
  */
 
 interface SellerAlvi {
@@ -122,10 +125,13 @@ export function escalasDe(steps: PriceStepAlvi[] | undefined): Oferta['escalas']
     .map((s) => ({
       minUnidades: s.minQuantity,
       precioUnitario: s.promotionalPrice,
+      // La ficha de Alvi publica estos tramos bajo el encabezado "Socio",
+      // junto a un "Unete al Club Alvi": exigen membresia ademas de cantidad.
+      requiereMembresia: true,
       origen:
         s.percentualDiscount !== undefined
-          ? `priceSteps: ${s.minQuantity}+ un, ${s.percentualDiscount}% dcto`
-          : `priceSteps: ${s.minQuantity}+ un`,
+          ? `socio Alvi, ${s.minQuantity}+ un, ${s.percentualDiscount}% dcto`
+          : `socio Alvi, ${s.minQuantity}+ un`,
     }))
     .sort((a, b) => a.minUnidades - b.minUnidades);
 }

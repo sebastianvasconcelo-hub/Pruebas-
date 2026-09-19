@@ -29,7 +29,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 93 tests, todos offline
+npm test          # 97 tests, todos offline
 ```
 
 ### Comparar
@@ -45,12 +45,19 @@ Con los datos reales de Alvi, el arroz Tucapel G2 1 Kg sale asi:
 >> alvi         $1.386/kg          total $4.157
      Arroz Tucapel gran seleccion G2 1 Kg
      unitario $1.490 (escala)  cashback -$313
-     - escala desde 3 un: priceSteps: 3+ un, 29% dcto
+     - escala desde 3 un: socio Alvi, 3+ un, 29% dcto
      - Jueves 7% tarjeta B6: -$313
 ```
 
 $2.090 de lista, $1.490 llevando 3 o mas, menos el 7% del jueves: $1.386 por
 kilo. Esa cadena de descuentos es justamente lo que no se ve en la vitrina.
+
+**Los tramos de Alvi exigen Club Alvi.** La ficha del producto los publica bajo
+el encabezado "Socio", junto a un "Unete al Club Alvi", y el precio regular
+($2.090) se paga igual compres 1 o compres 20. Por eso las escalas se marcan
+`requiereMembresia` y el motor solo las aplica si tu perfil declara esa
+membresia; si no, usa el precio regular y avisa cuanto te estas perdiendo.
+Se configura en `src/precios/reglas.ts`.
 
 ### Herramientas de diagnostico (esto lo corres tu)
 

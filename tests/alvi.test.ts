@@ -33,10 +33,12 @@ describe('mapearAlvi sobre datos reales', () => {
     expect(ofertas[0]!.precioSocio).toBeUndefined();
   });
 
-  it('convierte priceSteps en escalas ordenadas', () => {
+  it('convierte priceSteps en escalas de socio, ordenadas', () => {
+    // La ficha de Alvi publica estos tramos bajo "Socio", con un
+    // "Unete al Club Alvi": exigen membresia ademas de cantidad.
     expect(ofertas[0]!.escalas).toEqual([
-      { minUnidades: 3, precioUnitario: 1490, origen: 'priceSteps: 3+ un, 29% dcto' },
-      { minUnidades: 10, precioUnitario: 1450, origen: 'priceSteps: 10+ un, 31% dcto' },
+      { minUnidades: 3, precioUnitario: 1490, requiereMembresia: true, origen: 'socio Alvi, 3+ un, 29% dcto' },
+      { minUnidades: 10, precioUnitario: 1450, requiereMembresia: true, origen: 'socio Alvi, 10+ un, 31% dcto' },
     ]);
   });
 
@@ -84,5 +86,36 @@ describe('escalasDe', () => {
 
   it('tolera la ausencia de priceSteps', () => {
     expect(escalasDe(undefined)).toEqual([]);
+  });
+});
+
+describe('las escalas de Alvi exigen ser socio', () => {
+  const [oferta] = mapearAlvi(ALVI, REAL);
+  const SIN_CLUB: typeof PERFIL_POR_DEFECTO = {
+    ...PERFIL_POR_DEFECTO,
+    membresias: PERFIL_POR_DEFECTO.membresias.filter((m) => m.tienda !== 'alvi'),
+  };
+
+  it('siendo socio, llevar 3 baja a $1.490', () => {
+    const d = precioEfectivo(oferta!, 3, PERFIL_POR_DEFECTO, { fecha: MARTES });
+    expect(d.precioUnitarioBruto).toBe(1490);
+    expect(d.origenPrecio).toBe('escala');
+  });
+
+  it('sin Club Alvi se paga el precio regular aunque lleves 10', () => {
+    const d = precioEfectivo(oferta!, 10, SIN_CLUB, { fecha: MARTES });
+    expect(d.precioUnitarioBruto).toBe(2090);
+    expect(d.origenPrecio).toBe('lista');
+  });
+
+  it('y avisa cuanto se esta dejando de ganar por no ser socio', () => {
+    const d = precioEfectivo(oferta!, 10, SIN_CLUB, { fecha: MARTES });
+    expect(d.notas.join(' ')).toContain('no eres socio de alvi');
+    expect(d.notas.join(' ')).toContain('1.450');
+  });
+
+  it('no avisa nada cuando la cantidad no alcanza ningun tramo', () => {
+    const d = precioEfectivo(oferta!, 1, SIN_CLUB, { fecha: MARTES });
+    expect(d.notas.join(' ')).not.toContain('no eres socio');
   });
 });
