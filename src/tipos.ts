@@ -22,6 +22,13 @@ export interface Oferta {
   /** Precio con membresia (Prime / socio Alvi) cuando la API lo expone. */
   precioSocio?: CLP;
   escalas: Escala[];
+  /**
+   * Formato declarado por la tienda. Cuando existe se prefiere sobre deducirlo
+   * del nombre, que es el plan B.
+   */
+  contenido?: Contenido;
+  /** Precio por unidad de medida segun la tienda, ej "$2.090 x Kg". Sirve de contraste. */
+  ppumTienda?: string;
   /** Textos de promocion sin procesar. Se guardan siempre para poder auditar. */
   promoTexto: string[];
   disponible: boolean;

@@ -116,7 +116,8 @@ export function precioEfectivo(
   const unitarioEfectivo = totalEfectivo / cantidad;
 
   // 6. Normalizacion a $/kg o $/L: sin esto la comparacion entre cadenas miente.
-  const contenido = parsearContenido(oferta.nombre);
+  //    El formato declarado por la tienda manda; deducirlo del nombre es el plan B.
+  const contenido = oferta.contenido ?? parsearContenido(oferta.nombre);
   let porUnidadMedida: Desglose['porUnidadMedida'] = null;
   if (contenido && contenido.cantidad > 0) {
     porUnidadMedida = {

@@ -1,9 +1,19 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { mapearVtex, urlBusqueda } from '../src/adapters/vtex.js';
-import { tienda } from '../src/adapters/index.js';
+import type { TiendaConfig } from '../src/adapters/tipos.js';
 
-const ALVI = tienda('alvi')!;
+/**
+ * Tienda VTEX generica. Ninguna cadena chilena usa hoy el catalogo clasico,
+ * pero el adapter se conserva porque el patron sigue vigente en la region.
+ */
+const ALVI: TiendaConfig = {
+  id: 'alvi',
+  nombre: 'Tienda VTEX de prueba',
+  host: 'www.alvi.cl',
+  motor: 'vtex',
+  soportado: true,
+};
 const crudo = JSON.parse(readFileSync('fixtures/alvi-arroz.sintetico.json', 'utf8'));
 
 describe('urlBusqueda', () => {

@@ -3,6 +3,15 @@ import { parsearPromos } from '../normalizar/promo.js';
 import type { Adapter, OpcionesBusqueda, TiendaConfig } from './tipos.js';
 
 /**
+ * Adapter del catalogo clasico de VTEX.
+ *
+ * NOTA: a septiembre de 2026 ninguna de las cadenas chilenas probadas expone
+ * esta ruta (404/500). Se conserva porque el patron sigue vigente en otros
+ * retailers de la region y porque el mapeo es correcto: si alguna vuelve a
+ * exponerla, o se encuentra el host de API real, sirve tal cual.
+ */
+
+/**
  * Forma parcial de la respuesta de /api/catalog_system/pub/products/search.
  * Solo se declara lo que se usa: VTEX devuelve decenas de campos mas.
  */

@@ -4,9 +4,10 @@ Spike de viabilidad tecnica: recolectar precios de supermercados chilenos y
 compararlos aplicando tus reglas reales de compra (membresia, cashback del
 jueves, escalas por cantidad de Alvi y costo de tener bodega).
 
-Estado: **prototipo sin validar contra las APIs reales.** El motor de precios
-esta completo y testeado; los adapters estan escritos pero nadie los ha
-ejecutado todavia contra Jumbo o Alvi.
+Estado: **funcionando contra Alvi y Jumbo.** El motor de precios esta completo
+y testeado, el adapter de Alvi esta validado contra datos reales del sitio, y
+el de Jumbo entrega nombre, marca, url y precio con la limitacion descrita mas
+abajo. Santa Isabel, Unimarc y Lider siguen sin explorar.
 
 ## Por que esta dividido asi
 
@@ -20,17 +21,38 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 | Parser de formatos (`$/kg`, `$/L`) | no | testeado |
 | Parser de promociones y escalas | no | testeado |
 | Motor de precio efectivo | no | testeado |
-| Mapeo de la respuesta VTEX -> oferta | no (usa fixtures) | testeado con fixture sintetico |
-| Llamada HTTP a las tiendas | si | **sin validar** |
+| Mapeo del HTML de Alvi -> oferta | no (usa fixtures) | testeado con datos reales |
+| Mapeo del JSON-LD de Jumbo -> oferta | no (usa fixtures) | testeado |
+| Llamada HTTP a las tiendas | si | funciona |
 
 ## Partida rapida
 
 ```bash
 npm install
-npm test          # 82 tests, todos offline
+npm test          # 93 tests, todos offline
 ```
 
-### Paso 1: validar que las APIs responden (esto lo corres tu)
+### Comparar
+
+```bash
+npm run comparar -- "arroz" --cantidad 3 --fecha 2026-09-24
+npm run comparar -- "arroz" --offline     # usando los fixtures, sin red
+```
+
+Con los datos reales de Alvi, el arroz Tucapel G2 1 Kg sale asi:
+
+```
+>> alvi         $1.386/kg          total $4.157
+     Arroz Tucapel gran seleccion G2 1 Kg
+     unitario $1.490 (escala)  cashback -$313
+     - escala desde 3 un: priceSteps: 3+ un, 29% dcto
+     - Jueves 7% tarjeta B6: -$313
+```
+
+$2.090 de lista, $1.490 llevando 3 o mas, menos el 7% del jueves: $1.386 por
+kilo. Esa cadena de descuentos es justamente lo que no se ve en la vitrina.
+
+### Herramientas de diagnostico (esto lo corres tu)
 
 ```bash
 npm run probe -- arroz

@@ -1,0 +1,82 @@
+{
+  "_nota": "Recorte real de www.alvi.cl/search?q=arroz capturado el 2026-09-19. Solo datos de precio publicos, usados como fixture de tests.",
+  "props": {
+    "pageProps": {
+      "dehydratedState": {
+        "queries": [
+          {
+            "state": {
+              "data": {
+                "availableProducts": [
+                  {
+                    "productId": "438",
+                    "itemId": "438",
+                    "sku": "438",
+                    "name": "Arroz Tucapel gran selección G2 1 Kg",
+                    "nameComplete": "Arroz Tucapel gran selección G2 1 Kg Arroz G2 gran selección largo",
+                    "format": "1 Kg",
+                    "formatLevelSmall": "1 un",
+                    "packing": "",
+                    "ean": "7801420220138",
+                    "brand": "Tucapel",
+                    "brandId": 1068,
+                    "description": "Arroz Tucapel G2 gran Selección largo 1 Kg",
+                    "measurementUnit": "un",
+                    "unitMultiplier": 1,
+                    "refId": "000000000000006126-UN",
+                    "detailUrl": "/arroz-tucapel-gran-seleccion-g2-1-kg/p",
+                    "categoryId": "16",
+                    "promotion": {},
+                    "promotionalTag": {},
+                    "sellers": [
+                      {
+                        "sellerId": "1",
+                        "sellerName": "Alvi Supermercados Mayoristas S.A.",
+                        "price": 2090,
+                        "listPrice": 2090,
+                        "priceWithoutDiscount": 2090,
+                        "rewardValue": 0,
+                        "availableQuantity": 10000,
+                        "inOffer": false,
+                        "ppum": "$2.090 x Kg"
+                      }
+                    ],
+                    "unitMultiplierUn": 1,
+                    "measurementUnitUn": "Kg",
+                    "pack": 1,
+                    "priceSteps": [
+                      { "promotionalPrice": 1490, "minQuantity": 3, "percentualDiscount": 29, "_id": "", "ppum": "$1.490 x Kg" },
+                      { "promotionalPrice": 1450, "minQuantity": 10, "percentualDiscount": 31, "_id": "", "ppum": "$1.450 x Kg" }
+                    ]
+                  }
+                ],
+                "notAvailableProducts": []
+              }
+            }
+          }
+        ]
+      },
+      "intelliSearchData": {
+        "availableProducts": [
+          {
+            "productId": "438",
+            "itemId": "438",
+            "sku": "438",
+            "name": "Arroz Tucapel gran selección G2 1 Kg",
+            "format": "1 Kg",
+            "ean": "7801420220138",
+            "brand": "Tucapel",
+            "detailUrl": "/arroz-tucapel-gran-seleccion-g2-1-kg/p",
+            "sellers": [{ "sellerId": "1", "price": 2090, "listPrice": 2090, "availableQuantity": 10000, "ppum": "$2.090 x Kg" }],
+            "unitMultiplierUn": 1,
+            "measurementUnitUn": "Kg",
+            "priceSteps": [
+              { "promotionalPrice": 1490, "minQuantity": 3, "percentualDiscount": 29 },
+              { "promotionalPrice": 1450, "minQuantity": 10, "percentualDiscount": 31 }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}
