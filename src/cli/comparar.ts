@@ -9,7 +9,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { TIENDAS, tienda } from '../adapters/index.js';
 import { buscarPorId, buscarPorNombre, cargar, ofertasDe } from '../canonico/catalogo.js';
 import type { ProductoCanonico } from '../canonico/tipos.js';
-import { buscarEnSitio } from '../adapters/html.js';
+import { buscarEnSitio, leerFicha } from '../adapters/html.js';
 import { mapearAlvi } from '../adapters/alvi.js';
 import { mapearJsonLd } from '../adapters/jsonld.js';
 import { mapearVtex } from '../adapters/vtex.js';
@@ -90,7 +90,10 @@ async function desdeCatalogo(producto: ProductoCanonico): Promise<Oferta[]> {
   const resultados = await Promise.allSettled(
     producto.equivalencias.map(async (eq) => {
       const cfg = tienda(eq.tienda);
-      if (!cfg?.soportado || !cfg.busqueda) return [];
+      if (!cfg?.soportado) return [];
+      // La ficha trae los precios completos; la busqueda es el respaldo.
+      if (eq.url) return leerFicha(cfg, eq.url);
+      if (!cfg.busqueda) return [];
       return buscarEnSitio(cfg, eq.nombre);
     }),
   );

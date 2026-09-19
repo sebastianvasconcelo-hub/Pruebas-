@@ -86,6 +86,7 @@ export function equivalenciaDesdeOferta(oferta: Oferta, origen: 'ean' | 'manual'
     sku: oferta.sku,
     ean: oferta.ean,
     nombre: oferta.nombre,
+    url: oferta.url,
     origen,
     confirmadoEn: new Date().toISOString().slice(0, 10),
   };

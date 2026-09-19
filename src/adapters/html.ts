@@ -5,6 +5,7 @@ import {
   extraerNextData,
 } from '../descubrir/nextdata.js';
 import { mapearAlvi } from './alvi.js';
+import { mapearFichaJumbo } from './jumboFicha.js';
 import { mapearJsonLd } from './jsonld.js';
 import type { TiendaConfig } from './tipos.js';
 
@@ -36,6 +37,38 @@ export function mapearHtml(cfg: TiendaConfig, html: string): Oferta[] {
     return mapearJsonLd(cfg, extraerJsonIncrustado(flight));
   }
   return [];
+}
+
+/**
+ * Mapeo puro del HTML de una ficha de producto.
+ *
+ * La ficha trae mas que la busqueda: en Jumbo, el precio de lista y el precio
+ * Prime, que el ItemList de schema.org no distingue.
+ */
+export function mapearFicha(cfg: TiendaConfig, html: string): Oferta[] {
+  if (cfg.motor === 'jsonld') {
+    const flight = extraerFlight(html);
+    if (flight === '') return [];
+    const bloques = extraerJsonIncrustado(flight);
+    const desdeFicha = mapearFichaJumbo(cfg, bloques);
+    // Si la ficha no rindio, al menos queda el schema.org con un precio.
+    return desdeFicha.length > 0 ? desdeFicha : mapearJsonLd(cfg, bloques);
+  }
+  return mapearHtml(cfg, html);
+}
+
+/** Trae la ficha de un producto por su URL. */
+export async function leerFicha(
+  cfg: TiendaConfig,
+  url: string,
+  opts: { timeoutMs?: number } = {},
+): Promise<Oferta[]> {
+  const res = await fetch(url, {
+    headers: NAVEGADOR,
+    signal: AbortSignal.timeout(opts.timeoutMs ?? 30_000),
+  });
+  if (!res.ok) throw new Error(`${cfg.id}: HTTP ${res.status} en ${url}`);
+  return mapearFicha(cfg, await res.text());
 }
 
 export function urlBusqueda(cfg: TiendaConfig, query: string): string | null {

@@ -23,13 +23,14 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 | Motor de precio efectivo | no | testeado |
 | Mapeo del HTML de Alvi -> oferta | no (usa fixtures) | testeado con datos reales |
 | Mapeo del JSON-LD de Jumbo -> oferta | no (usa fixtures) | testeado |
+| Mapeo de la ficha de Jumbo -> oferta | no (usa fixtures) | testeado con datos reales |
 | Llamada HTTP a las tiendas | si | funciona |
 
 ## Partida rapida
 
 ```bash
 npm install
-npm test          # 152 tests, todos offline
+npm test          # 163 tests, todos offline
 ```
 
 ### Comparar
@@ -252,9 +253,22 @@ Deliberadamente **no** se deduce el precio desde el porcentaje: 35% de $5.890
 da $3.828,5 y cualquier redondeo propio se desviaria de la caja. Si la
 promocion no declara `unitPrice`, no hay precio.
 
-Esto implica traer la ficha de cada producto, no solo la pagina de busqueda.
-Para el catalogo canonico es lo correcto: son ~150 fichas, una por producto
-registrado.
+La ficha tambien trae el formato resuelto (`unitMultiplierUn: 0.5`,
+`measurementUnitUn: "kg"` para un envase de 500 g) y el ppum de la tienda, que
+sirve de contraste: el motor calcula $9.088/kg con Prime y $11.780/kg sin
+Prime, los mismos valores que muestra la pagina.
+
+**Jumbo no expone EAN.** El emparejamiento con Alvi no se puede automatizar por
+codigo de barras y queda en confirmacion manual, producto por producto.
+
+Esto implica traer la ficha de cada producto, no solo la pagina de busqueda,
+asi que el flujo real queda partido en dos:
+
+- **Busqueda** para descubrir productos y emparejarlos, una sola vez.
+- **Ficha** para los precios exactos, cada vez que compares.
+
+El catalogo canonico guarda la URL de cada equivalencia justamente para eso:
+son ~150 fichas, una por producto registrado.
 
 ### Santa Isabel, Unimarc y Lider
 

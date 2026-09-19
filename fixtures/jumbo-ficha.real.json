@@ -1,0 +1,79 @@
+[
+  {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": "Queso Mantecoso Quilque Envasado Laminado 500 g",
+    "sku": "10995",
+    "brand": { "@type": "Brand", "name": "Quilque" },
+    "url": "https://www.jumbo.cl/quesomantecoso-quilque-28laminasenvaseresellablealvacio500grs-2/p",
+    "offers": {
+      "@type": "Offer",
+      "priceCurrency": "CLP",
+      "price": 5890,
+      "availability": "https://schema.org/InStock",
+      "itemCondition": "https://schema.org/NewCondition"
+    }
+  },
+  [
+    null,
+    null,
+    null,
+    {
+      "children": [
+        null,
+        null,
+        null,
+        {
+          "product": {
+            "items": [
+              {
+                "skuId": "10995",
+                "cartLimit": 12,
+                "measurementUnit": "un",
+                "unitMultiplier": 1,
+                "measurementUnitUn": "kg",
+                "unitMultiplierUn": 0.5,
+                "price": 5890,
+                "listPrice": 6990,
+                "ppumPrice": 11780,
+                "ppumListPrice": 13980,
+                "ppumConversion": 0,
+                "ppumMeasurementUnit": "kg",
+                "name": "Queso Mantecoso Quilque Envasado Laminado 500 g",
+                "stock": true,
+                "promotions": [
+                  {
+                    "id": "c41bf969-ea7e-47e5-ae85-f33d1be99965",
+                    "name": "TMP OFERTA 5890 - COR: JUMBO Ofertas CS JUMBO EXCLUSIVAS JUMBO XL SEPTIEMBRE",
+                    "description": "JUMBO EXCLUSIVAS JUMBO XL SEPTIEMBRE 25 AGO AL 2",
+                    "type": "nominal",
+                    "value": 0,
+                    "unitPrice": 5890,
+                    "ppumPrice": 11780,
+                    "mQuantity": 1,
+                    "nQuantity": 0,
+                    "paymentMethods": "ALL",
+                    "userProperties": "ALL"
+                  },
+                  {
+                    "id": "77da024c-0723-4ab9-a6e2-54a695e837e9",
+                    "name": "TMP DESCUENTO 35% - PRI: JUMBO PRIME JUMBO VINA, QUESO Y CERVEZA DEL MES PRIME SEPT",
+                    "description": "JUMBO VINA, QUESO Y CERVEZA DEL MES PRIME SEPT",
+                    "type": "percentual",
+                    "value": 35,
+                    "unitPrice": 4544,
+                    "ppumPrice": 9088,
+                    "mQuantity": 1,
+                    "nQuantity": 0,
+                    "paymentMethods": "ALL",
+                    "userProperties": "PRIME_USER"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+]

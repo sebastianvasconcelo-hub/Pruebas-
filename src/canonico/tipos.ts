@@ -13,6 +13,11 @@ export interface Equivalencia {
   ean?: string;
   /** Nombre en esa tienda, para poder auditar el emparejamiento despues. */
   nombre: string;
+  /**
+   * URL de la ficha. En Jumbo los precios completos (lista, vigente y Prime)
+   * solo estan ahi, no en la pagina de busqueda.
+   */
+  url?: string;
   /** Como se establecio: por EAN identico o confirmado a mano. */
   origen: 'ean' | 'manual';
   confirmadoEn: string;
