@@ -11,8 +11,10 @@ import { buscarEnSitio } from '../adapters/html.js';
 import { mapearAlvi } from '../adapters/alvi.js';
 import { mapearJsonLd } from '../adapters/jsonld.js';
 import { mapearVtex } from '../adapters/vtex.js';
+import { nombreDia, parsearFechaLocal } from '../normalizar/fecha.js';
 import { parsearContenido } from '../normalizar/unidad.js';
 import { comparar } from '../precios/efectivo.js';
+import { advertenciasEquivalencia } from '../precios/equivalencia.js';
 import { PERFIL_POR_DEFECTO } from '../precios/reglas.js';
 import type { Oferta } from '../tipos.js';
 
@@ -20,7 +22,9 @@ const args = process.argv.slice(2);
 const query = args.find((a) => !a.startsWith('--'));
 const offline = args.includes('--offline');
 const cantidad = Number(valorFlag('--cantidad') ?? 1);
-const fecha = valorFlag('--fecha') ? new Date(valorFlag('--fecha')!) : new Date();
+// parsearFechaLocal y no new Date(): "2026-09-25" en UTC cae el dia anterior
+// en Chile, y el cashback depende del dia de la semana.
+const fecha = valorFlag('--fecha') ? parsearFechaLocal(valorFlag('--fecha')!) : new Date();
 
 function valorFlag(nombre: string): string | undefined {
   const i = args.indexOf(nombre);
@@ -40,7 +44,6 @@ if (!Number.isInteger(cantidad) || cantidad < 1) {
   process.exit(1);
 }
 
-const DIAS = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
 const clp = (n: number) => `$${Math.round(n).toLocaleString('es-CL')}`;
 
 async function desdeFixtures(q: string): Promise<Oferta[]> {
@@ -105,7 +108,7 @@ const { ranking, criterio, advertencias } = comparar(
   { fecha },
 );
 
-console.log(`\n"${query}"  x${cantidad} un  |  ${DIAS[fecha.getDay()]} ${fecha.toLocaleDateString('es-CL')}`);
+console.log(`\n"${query}"  x${cantidad} un  |  ${nombreDia(fecha)} ${fecha.toLocaleDateString('es-CL')}`);
 console.log(`${universo.length} ofertas de ${porTienda.size} tienda(s)`);
 console.log(`criterio de orden: ${criterio === 'unidad-medida' ? '$ por kg/L' : '$ por unidad'}\n`);
 
@@ -127,11 +130,21 @@ for (const [i, d] of ranking.entries()) {
 
 for (const a of advertencias) console.log(`aviso: ${a}`);
 
+const dudas = advertenciasEquivalencia([...porTienda.values()]);
 const [mejor, segunda] = ranking;
+
 if (mejor && segunda) {
   const ahorro = segunda.totalEfectivo - mejor.totalEfectivo;
   if (ahorro > 0) {
-    console.log(`\nComprando en ${mejor.tienda} en vez de ${segunda.tienda} ahorras ${clp(ahorro)} en esta compra.`);
+    if (dudas.length === 0) {
+      console.log(`\nComprando en ${mejor.tienda} en vez de ${segunda.tienda} ahorras ${clp(ahorro)} en esta compra.`);
+    } else {
+      // Un ahorro entre productos que no son el mismo no es un ahorro.
+      console.log(`\nOJO: la diferencia de ${clp(ahorro)} entre ${mejor.tienda} y ${segunda.tienda}`);
+      console.log('no es comparable todavia, porque no son el mismo producto:');
+      for (const d of dudas) console.log(`   - ${d}`);
+      console.log('Falta la tabla de producto canonico para comparar de verdad.');
+    }
   }
 }
 console.log();

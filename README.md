@@ -29,7 +29,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 97 tests, todos offline
+npm test          # 109 tests, todos offline
 ```
 
 ### Comparar
@@ -269,8 +269,15 @@ src/
 ## Limites conocidos
 
 - **No hay matching entre cadenas todavia.** Hoy se busca el mismo texto en
-  cada tienda. El paso siguiente es una tabla de producto canonico con el EAN
-  cuando exista y confirmacion manual cuando no.
+  cada tienda y se toma lo mas barato de cada una, asi que los ganadores pueden
+  no ser el mismo producto. En la primera corrida real salio "Arroz Merkat 1 Kg"
+  (marca propia de Alvi) contra "Arroz Tucapel Blue 1 kg" de Jumbo: la
+  diferencia de precio era real, la comparacion no.
+
+  Mientras no exista la tabla de producto canonico, `advertenciasEquivalencia()`
+  detecta el problema por EAN, marca y unidad de medida, y el comparador se
+  niega a presentar el ahorro como si fuera comparable. El paso siguiente es esa
+  tabla, con EAN cuando exista y confirmacion manual cuando no.
 - **El dedup por tienda elige por `$/kg`**, pero si la busqueda trae productos
   que no son equivalentes (arroz grado 1 vs grado 2) la comparacion es
   injusta. Eso lo resuelve el matching, no el dedup.
