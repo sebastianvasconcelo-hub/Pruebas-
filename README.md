@@ -29,7 +29,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 143 tests, todos offline
+npm test          # 152 tests, todos offline
 ```
 
 ### Comparar
@@ -227,19 +227,34 @@ El catalogo no viaja como datos de aplicacion, pero el payload RSC incluye un
 busqueda no distingue precio normal de precio Prime, ni trae escalas ni EAN.
 Sirve para comparar, no para modelar la membresia.
 
-La ficha de producto si muestra los tres precios (lista tachada, precio vigente
-y "Prime Paga $X"), asi que el dato existe; falta confirmar si viaja en el HTML
-de la ficha o llega por XHR. Para averiguarlo, sobre la URL de un producto con
-precio Prime:
+### La ficha de Jumbo si trae el precio Prime
 
-```bash
-npm run nextdata -- "https://www.jumbo.cl/<producto>/p"
-npm run inspeccionar -- fixtures/jumbo-<producto>.html --buscar 4544
+Confirmado sobre el HTML real: la ficha manda un objeto `product` con
+`items[].promotions[]`, y cada promocion declara a quien aplica.
+
+```json
+{
+  "description": "JUMBO VINA, QUESO Y CERVEZA DEL MES PRIME SEPT",
+  "type": "percentual", "value": 35,
+  "unitPrice": 4544, "ppumPrice": 9088,
+  "mQuantity": 1, "nQuantity": 0,
+  "paymentMethods": "ALL",
+  "userProperties": "PRIME_USER"
+}
 ```
 
-donde 4544 es el precio Prime que muestra la ficha. La busqueda compara cifras
-completas, asi que encuentra el valor tanto si viaja como numero (4544) como
-dentro de un texto ("$4.544 x Kg"), sin confundirlo con un SKU que lo contenga.
+`userProperties` es lo que faltaba: distingue el precio Prime del abierto a
+cualquiera. `interpretarPromociones()` las separa en precio de socio (cuando
+aplican desde la primera unidad) y escalas por cantidad, marcando las que
+exigen membresia.
+
+Deliberadamente **no** se deduce el precio desde el porcentaje: 35% de $5.890
+da $3.828,5 y cualquier redondeo propio se desviaria de la caja. Si la
+promocion no declara `unitPrice`, no hay precio.
+
+Esto implica traer la ficha de cada producto, no solo la pagina de busqueda.
+Para el catalogo canonico es lo correcto: son ~150 fichas, una por producto
+registrado.
 
 ### Santa Isabel, Unimarc y Lider
 
