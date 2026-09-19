@@ -50,7 +50,8 @@ function nombreArchivo(url: URL): string {
     url.searchParams.get('ft') ??
     url.pathname.split('/').filter((t) => t !== '' && t !== 'p').pop() ??
     'pagina';
-  return `${host}-${termino.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 50)}`;
+  const limpio = termino.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 50).replace(/-+$/, '');
+  return `${host}-${limpio}`;
 }
 
 /** Endpoint de navegacion cliente de Next.js: suele traer las mismas props en JSON puro. */

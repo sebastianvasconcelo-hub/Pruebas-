@@ -7,7 +7,7 @@
  *   npm run inspeccionar -- fixtures/alvi-arroz.html
  *   npm run inspeccionar -- fixtures/jumbo-busqueda.html --buscar tucapel
  */
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import {
   buscarProductos,
   buscarTexto,
@@ -34,7 +34,35 @@ if (!ruta) {
   process.exit(1);
 }
 
-const contenido = await readFile(ruta, 'utf8');
+/**
+ * Lee el archivo y, si no esta, muestra los que si hay.
+ *
+ * Los nombres de fixture se truncan, asi que teclear el de la URL completa
+ * falla: mas util es ofrecer la lista que un ENOENT crudo.
+ */
+async function leer(ruta: string): Promise<string> {
+  try {
+    return await readFile(ruta, 'utf8');
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
+    console.error(`\nNo existe ${ruta}\n`);
+    try {
+      const hay = (await readdir('fixtures')).filter((f) => f.endsWith('.html') || f.endsWith('.json'));
+      if (hay.length > 0) {
+        console.error('En fixtures/ hay:');
+        for (const f of hay) console.error(`   fixtures/${f}`);
+      } else {
+        console.error('fixtures/ esta vacio. Descarga algo con: npm run nextdata -- "<url>"');
+      }
+    } catch {
+      console.error('No existe la carpeta fixtures/. Descarga algo con: npm run nextdata -- "<url>"');
+    }
+    console.error();
+    process.exit(1);
+  }
+}
+
+const contenido = await leer(ruta);
 console.log(`\n${ruta}  (${(contenido.length / 1024).toFixed(0)} KB)\n`);
 
 const bloques: unknown[] = [];
