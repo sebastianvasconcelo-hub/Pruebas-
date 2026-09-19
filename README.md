@@ -27,7 +27,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 56 tests, todos offline
+npm test          # 64 tests, todos offline
 ```
 
 ### Paso 1: validar que las APIs responden (esto lo corres tu)
@@ -96,10 +96,23 @@ npm run nextdata -- "https://www.jumbo.cl/search?q=arroz"
 
 Hay que pasarle la URL real de busqueda del sitio (la que queda en la barra de
 direcciones al buscar), porque cada cadena usa la suya y adivinarla solo
-produce 404 sin informacion. El comando extrae el `__NEXT_DATA__`, recorre el
-JSON buscando arreglos que parezcan productos, reporta donde estan y que claves
-de precio traen, y guarda el payload en `fixtures/`. Si el HTML no alcanza,
-reintenta contra `/_next/data/<buildId>/<ruta>.json`.
+produce 404 sin informacion.
+
+El comando prueba tres formatos, en orden:
+
+1. **`__NEXT_DATA__`** (Pages Router, Next.js 12 y anteriores).
+2. **Chunks `self.__next_f.push([...])`** (App Router, Next.js 13+). Es el caso
+   de Jumbo: devuelve HTTP 200 sin `__NEXT_DATA__` porque manda el payload de
+   React Server Components en ese formato. Como el stream de RSC no es JSON
+   sino lineas `id:valor`, se rescatan los fragmentos que parseen como objeto o
+   arreglo en vez de implementar un formato interno que cambia sin aviso.
+3. **`/_next/data/<buildId>/<ruta>.json`**, que a veces trae mas props que el
+   HTML inicial.
+
+En los tres casos recorre el JSON buscando arreglos que parezcan productos,
+reporta donde estan y que claves de precio traen, y guarda el payload en
+`fixtures/`. Siempre guarda tambien el HTML crudo, que sirve de evidencia
+aunque la extraccion falle.
 
 Si tampoco aparece nada, los datos se cargan por XHR despues de pintar y la
 respuesta definitiva la da el sitio: DevTools -> Network -> filtro Fetch/XHR ->
@@ -168,7 +181,7 @@ src/
     fingerprint.ts         descubre plataforma y rutas cuando el probe falla
     nextdata.ts            extrae productos del HTML de storefronts Next.js
   descubrir/
-    nextdata.ts            parseo de __NEXT_DATA__ y busqueda de productos
+    nextdata.ts            __NEXT_DATA__, chunks de App Router y busqueda de productos
     comparar.ts            compara un producto entre tiendas
 ```
 

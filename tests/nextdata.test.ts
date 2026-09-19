@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { buscarProductos, extraerBuildId, extraerNextData } from '../src/descubrir/nextdata.js';
+import {
+  buscarProductos,
+  extraerBuildId,
+  extraerFlight,
+  extraerJsonIncrustado,
+  extraerNextData,
+} from '../src/descubrir/nextdata.js';
 
 const HTML = `<!doctype html><html><body>
 <script id="__NEXT_DATA__" type="application/json">
@@ -65,5 +71,53 @@ describe('buscarProductos', () => {
     const json: Record<string, unknown> = { a: 1 };
     json.self = json;
     expect(() => buscarProductos(json)).not.toThrow();
+  });
+});
+
+describe('extraerFlight (App Router)', () => {
+  const HTML_APP = `<!doctype html><html><body>
+<script>self.__next_f.push([1,"3:{\\"nada\\":1}\\n"])</script>
+<script>self.__next_f.push([1,"4:{\\"productos\\":[{\\"nombre\\":\\"Arroz Tucapel 1 kg\\",\\"precio\\":1490},{\\"nombre\\":\\"Arroz Miraflores 5 kg\\",\\"precio\\":5990}]}\\n"])</script>
+</body></html>`;
+
+  it('concatena los chunks y los desescapa', () => {
+    expect(extraerFlight(HTML_APP)).toContain('"nombre":"Arroz Tucapel 1 kg"');
+  });
+
+  it('devuelve vacio si la pagina no usa App Router', () => {
+    expect(extraerFlight('<html><body>hola</body></html>')).toBe('');
+  });
+
+  it('ignora chunks rotos sin perder los buenos', () => {
+    const roto = '<script>self.__next_f.push([1,"ok:1\\n"])</script>' + HTML_APP;
+    expect(extraerFlight(roto)).toContain('Arroz Tucapel');
+  });
+
+  it('encuentra los productos dentro del stream', () => {
+    const bloques = extraerJsonIncrustado(extraerFlight(HTML_APP), { minLargo: 40 });
+    const candidatos = bloques.flatMap((b) => buscarProductos(b));
+    expect(candidatos[0]).toMatchObject({ ruta: 'productos', cantidad: 2 });
+  });
+});
+
+describe('extraerJsonIncrustado', () => {
+  it('no se confunde con llaves dentro de strings', () => {
+    const texto = 'x:{"nota":"esto { no cierra","valor":42,"otro":"[]"}';
+    expect(extraerJsonIncrustado(texto, { minLargo: 10 })).toEqual([
+      { nota: 'esto { no cierra', valor: 42, otro: '[]' },
+    ]);
+  });
+
+  it('respeta las comillas escapadas', () => {
+    const texto = 'a:{"txt":"comilla \\" adentro","n":1,"mas":"relleno relleno"}';
+    expect(extraerJsonIncrustado(texto, { minLargo: 10 })).toHaveLength(1);
+  });
+
+  it('descarta bloques que no cierran', () => {
+    expect(extraerJsonIncrustado('a:{"abierto":"sin cierre"', { minLargo: 5 })).toEqual([]);
+  });
+
+  it('ignora fragmentos demasiado cortos', () => {
+    expect(extraerJsonIncrustado('a:{"n":1}', { minLargo: 120 })).toEqual([]);
   });
 });

@@ -105,3 +105,88 @@ export function buscarProductos(json: unknown, profundidadMax = 12): Candidato[]
   recorrer(json, '', 0);
   return encontrados.sort((a, b) => b.cantidad - a.cantidad);
 }
+
+/**
+ * Next.js 13+ (App Router) no emite __NEXT_DATA__: manda el payload de React
+ * Server Components en chunks `self.__next_f.push([1,"..."])`, donde el segundo
+ * elemento es un string JSON escapado. Concatenados forman el stream completo.
+ */
+export function extraerFlight(html: string): string {
+  const patron = /self\.__next_f\.push\(\s*\[\s*\d+\s*,\s*("(?:[^"\\]|\\.)*")/g;
+  let out = '';
+  for (const m of html.matchAll(patron)) {
+    try {
+      out += JSON.parse(m[1]!) as string;
+    } catch {
+      // Chunk truncado o con escapes raros: se ignora y se sigue con el resto.
+    }
+  }
+  return out;
+}
+
+/** Fin del objeto/arreglo que empieza en `inicio`, respetando strings. -1 si no cierra. */
+function finBloque(texto: string, inicio: number, maxLargo: number): number {
+  const abre = texto[inicio];
+  const cierra = abre === '{' ? '}' : ']';
+  let nivel = 0;
+  let enString = false;
+  let escapado = false;
+  const tope = Math.min(texto.length, inicio + maxLargo);
+
+  for (let i = inicio; i < tope; i++) {
+    const c = texto[i]!;
+    if (enString) {
+      if (escapado) escapado = false;
+      else if (c === '\\') escapado = true;
+      else if (c === '"') enString = false;
+      continue;
+    }
+    if (c === '"') enString = true;
+    else if (c === abre) nivel++;
+    else if (c === cierra) {
+      nivel--;
+      if (nivel === 0) return i;
+    }
+  }
+  return -1;
+}
+
+/**
+ * Rescata los fragmentos JSON validos incrustados en un texto cualquiera.
+ *
+ * El stream de RSC no es JSON: es una secuencia de lineas `id:valor` donde los
+ * valores si lo son. En vez de implementar ese formato, que es interno y
+ * cambiante, se recorta todo lo que parsee como objeto o arreglo.
+ */
+export function extraerJsonIncrustado(
+  texto: string,
+  opts: { minLargo?: number; maxLargo?: number; maxIntentos?: number } = {},
+): unknown[] {
+  const minLargo = opts.minLargo ?? 120;
+  const maxLargo = opts.maxLargo ?? 4_000_000;
+  let intentos = opts.maxIntentos ?? 20_000;
+  const encontrados: unknown[] = [];
+
+  for (let i = 0; i < texto.length && intentos > 0; i++) {
+    const c = texto[i];
+    if (c !== '{' && c !== '[') continue;
+    // Solo vale la pena intentar si lo que sigue puede abrir JSON real.
+    const sig = texto[i + 1];
+    if (sig !== '"' && sig !== '{' && sig !== '[') continue;
+
+    intentos--;
+    const fin = finBloque(texto, i, maxLargo);
+    if (fin === -1 || fin - i + 1 < minLargo) continue;
+
+    try {
+      const valor = JSON.parse(texto.slice(i, fin + 1));
+      if (valor && typeof valor === 'object') {
+        encontrados.push(valor);
+        i = fin; // no volver a entrar a lo que ya se rescato
+      }
+    } catch {
+      // No era JSON: seguir buscando desde la siguiente posicion.
+    }
+  }
+  return encontrados;
+}

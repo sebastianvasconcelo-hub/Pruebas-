@@ -3,4 +3,5 @@ dist/
 .env
 *.log
 fixtures/*.json
+fixtures/*.html
 !fixtures/*.sintetico.json

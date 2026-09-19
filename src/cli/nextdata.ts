@@ -11,7 +11,13 @@
  * equivocarse solo produce 404 que no significan nada.
  */
 import { mkdir, writeFile } from 'node:fs/promises';
-import { buscarProductos, extraerBuildId, extraerNextData } from '../descubrir/nextdata.js';
+import {
+  buscarProductos,
+  extraerBuildId,
+  extraerFlight,
+  extraerJsonIncrustado,
+  extraerNextData,
+} from '../descubrir/nextdata.js';
 
 const urls = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 
@@ -89,23 +95,61 @@ for (const bruta of urls) {
     if (!res.ok) continue;
 
     const html = await res.text();
+    await writeFile(`fixtures/${base}.html`, html);
+    console.log(`   ${(html.length / 1024).toFixed(0)} KB de HTML guardados en fixtures/${base}.html`);
+
     const nextData = extraerNextData(html);
+    let buildId: string | null = null;
 
-    if (!nextData) {
-      console.log('   sin bloque __NEXT_DATA__: los datos se cargan por XHR despues de pintar.');
-      console.log('   -> toca mirar DevTools (Network / Fetch-XHR) o usar Playwright.');
+    if (nextData) {
+      buildId = extraerBuildId(nextData);
+      console.log(`   __NEXT_DATA__ presente${buildId ? `  buildId=${buildId}` : ''}`);
+      if (await analizar(nextData, base, 'html')) {
+        exitosas++;
+        continue;
+      }
+    } else {
+      // Next.js 13+ (App Router) no emite __NEXT_DATA__: manda el payload de
+      // React Server Components en chunks self.__next_f.push([...]).
+      const flight = extraerFlight(html);
+      if (flight === '') {
+        console.log('   ni __NEXT_DATA__ ni chunks de App Router: la pagina se llena por XHR.');
+        console.log('   -> toca mirar DevTools (Network / Fetch-XHR) o usar Playwright.');
+        continue;
+      }
+
+      console.log(`   App Router: ${(flight.length / 1024).toFixed(0)} KB de payload RSC`);
+      const bloques = extraerJsonIncrustado(flight);
+      console.log(`   ${bloques.length} bloque(s) JSON rescatados del stream`);
+
+      const candidatos = bloques.flatMap((b, i) =>
+        buscarProductos(b).map((c) => ({ ...c, bloque: i })),
+      );
+      if (candidatos.length > 0) {
+        candidatos.sort((a, b) => b.cantidad - a.cantidad);
+        console.log(`   productos encontrados en el payload RSC:`);
+        for (const c of candidatos.slice(0, 3)) {
+          console.log(`      ${c.cantidad} productos en  bloque[${c.bloque}].${c.ruta || '(raiz)'}`);
+          console.log(`      claves: ${c.claves.slice(0, 14).join(', ')}`);
+          const precios = Object.entries(c.muestra as Record<string, unknown>).filter(([k]) =>
+            /price|precio|valor|amount/i.test(k),
+          );
+          if (precios.length > 0) {
+            console.log(`      precios: ${JSON.stringify(Object.fromEntries(precios)).slice(0, 220)}`);
+          }
+        }
+        const ruta = `fixtures/${base}.rsc.json`;
+        await writeFile(ruta, JSON.stringify(bloques, null, 2));
+        console.log(`      guardado en ${ruta}`);
+        exitosas++;
+        continue;
+      }
+      console.log('   el payload RSC no trae listas que parezcan productos.');
+      console.log('   -> toca mirar DevTools (Network / Fetch-XHR).');
       continue;
     }
 
-    const buildId = extraerBuildId(nextData);
-    console.log(`   __NEXT_DATA__ presente${buildId ? `  buildId=${buildId}` : ''}`);
-
-    if (await analizar(nextData, base, 'html')) {
-      exitosas++;
-      continue;
-    }
-
-    // Segundo intento: el endpoint de datos de Next, que a veces trae mas
+    // Ultimo intento: el endpoint de datos de Next, que a veces trae mas
     // props que el HTML inicial.
     if (!buildId) continue;
     const urlDatos = urlDatosNext(url, buildId);
