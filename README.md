@@ -29,7 +29,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 109 tests, todos offline
+npm test          # 136 tests, todos offline
 ```
 
 ### Comparar
@@ -58,6 +58,40 @@ el encabezado "Socio", junto a un "Unete al Club Alvi", y el precio regular
 `requiereMembresia` y el motor solo las aplica si tu perfil declara esa
 membresia; si no, usa el precio regular y avisa cuanto te estas perdiendo.
 Se configura en `src/precios/reglas.ts`.
+
+### Producto canonico: comparar el mismo articulo
+
+Buscar el mismo texto en cada tienda no compara nada: enfrenta lo mas barato de
+una contra lo mas barato de otra, que suelen ser productos distintos. El
+catalogo canonico arregla eso.
+
+```bash
+npm run emparejar -- "arroz tucapel"
+```
+
+Busca en todas las tiendas soportadas y:
+
+- **Empareja solo lo que puede probar.** Si el EAN coincide, lo registra sin
+  preguntar: eso no es un indicio, es identidad.
+- **Pregunta el resto**, mostrando candidatas ordenadas por parecido y diciendo
+  en que se basa cada puntaje ("misma marca", "formato distinto", "EAN
+  distintos"). La decision es tuya; el programa no adivina.
+- **Lo guarda en `catalogo.json`** y no lo vuelve a preguntar.
+
+Despues:
+
+```bash
+npm run comparar -- --producto arroz-tucapel-g2-1-kg --cantidad 3
+npm run catalogo                 # lo registrado hasta ahora
+```
+
+Cuando el producto esta en el catalogo, el comparador busca en cada tienda por
+el nombre que esa tienda usa, elige la oferta por SKU (con el EAN de respaldo
+si la tienda cambio el SKU) y compara el mismo articulo. Ahi el ahorro que
+reporta es real, y por eso deja de mostrar las advertencias de equivalencia.
+
+El `consumoMensual` que declares alimenta el costo de bodega y la decision
+entre comprar semanal o llenar la despensa.
 
 ### Herramientas de diagnostico (esto lo corres tu)
 
@@ -261,6 +295,12 @@ src/
     fingerprint.ts         descubre plataforma y rutas cuando el probe falla
     nextdata.ts            extrae productos del HTML de storefronts Next.js
     inspeccionar.ts        analiza un archivo ya descargado, sin red
+    emparejar.ts           registra un producto canonico, preguntando lo que no puede probar
+    catalogo.ts            muestra el catalogo canonico
+  canonico/
+    tipos.ts               producto canonico y equivalencias por tienda
+    similitud.ts           puntaje de parecido; EAN es prueba, el resto indicio
+    catalogo.ts            carga, busqueda y actualizacion de catalogo.json
   descubrir/
     nextdata.ts            __NEXT_DATA__, chunks de App Router y busqueda de productos
     comparar.ts            compara un producto entre tiendas
@@ -274,10 +314,11 @@ src/
   (marca propia de Alvi) contra "Arroz Tucapel Blue 1 kg" de Jumbo: la
   diferencia de precio era real, la comparacion no.
 
-  Mientras no exista la tabla de producto canonico, `advertenciasEquivalencia()`
-  detecta el problema por EAN, marca y unidad de medida, y el comparador se
-  niega a presentar el ahorro como si fuera comparable. El paso siguiente es esa
-  tabla, con EAN cuando exista y confirmacion manual cuando no.
+  Ya existe el catalogo canonico (`npm run emparejar`) que lo resuelve producto
+  por producto. Mientras un producto no este registrado,
+  `advertenciasEquivalencia()` detecta el problema por EAN, marca y unidad de
+  medida, y el comparador se niega a presentar el ahorro como si fuera
+  comparable.
 - **El dedup por tienda elige por `$/kg`**, pero si la busqueda trae productos
   que no son equivalentes (arroz grado 1 vs grado 2) la comparacion es
   injusta. Eso lo resuelve el matching, no el dedup.

@@ -7,6 +7,8 @@
  */
 import { readdir, readFile } from 'node:fs/promises';
 import { TIENDAS, tienda } from '../adapters/index.js';
+import { buscarPorId, buscarPorNombre, cargar, ofertasDe } from '../canonico/catalogo.js';
+import type { ProductoCanonico } from '../canonico/tipos.js';
 import { buscarEnSitio } from '../adapters/html.js';
 import { mapearAlvi } from '../adapters/alvi.js';
 import { mapearJsonLd } from '../adapters/jsonld.js';
@@ -20,6 +22,7 @@ import type { Oferta } from '../tipos.js';
 
 const args = process.argv.slice(2);
 const query = args.find((a) => !a.startsWith('--'));
+const productoPedido = valorFlag('--producto');
 const offline = args.includes('--offline');
 const cantidad = Number(valorFlag('--cantidad') ?? 1);
 // parsearFechaLocal y no new Date(): "2026-09-25" en UTC cae el dia anterior
@@ -31,8 +34,11 @@ function valorFlag(nombre: string): string | undefined {
   return i >= 0 ? args[i + 1] : undefined;
 }
 
-if (!query) {
-  console.error('Uso: npm run comparar -- "<producto>" [--cantidad N] [--fecha YYYY-MM-DD] [--offline]');
+if (!query && !productoPedido) {
+  console.error(
+    'Uso: npm run comparar -- "<producto>" [--cantidad N] [--fecha YYYY-MM-DD] [--offline]\n' +
+      '     npm run comparar -- --producto <id-canonico> [--cantidad N]',
+  );
   process.exit(1);
 }
 if (Number.isNaN(fecha.getTime())) {
@@ -75,7 +81,49 @@ async function desdeRed(q: string): Promise<Oferta[]> {
   return ofertas;
 }
 
-const todas = offline ? await desdeFixtures(query) : await desdeRed(query);
+/**
+ * Trae las ofertas de un producto canonico buscando en cada tienda por el
+ * nombre que esa tienda usa, que da muchas mas coincidencias que buscar el
+ * nombre canonico en todas.
+ */
+async function desdeCatalogo(producto: ProductoCanonico): Promise<Oferta[]> {
+  const resultados = await Promise.allSettled(
+    producto.equivalencias.map(async (eq) => {
+      const cfg = tienda(eq.tienda);
+      if (!cfg?.soportado || !cfg.busqueda) return [];
+      return buscarEnSitio(cfg, eq.nombre);
+    }),
+  );
+
+  const encontradas: Oferta[] = [];
+  for (const r of resultados) {
+    if (r.status === 'fulfilled') encontradas.push(...r.value);
+    else console.error(`  aviso: ${r.reason instanceof Error ? r.reason.message : r.reason}`);
+  }
+  return ofertasDe(producto, encontradas);
+}
+
+const catalogo = await cargar();
+
+// El catalogo manda: si el producto esta registrado, se compara el mismo
+// articulo en cada tienda en vez de lo mas barato que suene parecido.
+let canonico: ProductoCanonico | undefined;
+if (productoPedido) {
+  canonico = buscarPorId(catalogo, productoPedido);
+  if (!canonico) {
+    console.error(`\nNo hay ningun producto canonico con id "${productoPedido}".`);
+    console.error('Mira los registrados con: npm run catalogo\n');
+    process.exit(1);
+  }
+} else if (query) {
+  canonico = buscarPorNombre(catalogo, query)[0];
+}
+
+const todas = canonico && !offline
+  ? await desdeCatalogo(canonico)
+  : offline
+    ? await desdeFixtures(query ?? canonico!.nombre)
+    : await desdeRed(query!);
 const disponibles = todas.filter((o) => o.disponible);
 const universo = disponibles.length > 0 ? disponibles : todas;
 
@@ -105,10 +153,12 @@ const { ranking, criterio, advertencias } = comparar(
   [...porTienda.values()],
   cantidad,
   PERFIL_POR_DEFECTO,
-  { fecha },
+  { fecha, consumoMensual: canonico?.consumoMensual },
 );
 
-console.log(`\n"${query}"  x${cantidad} un  |  ${nombreDia(fecha)} ${fecha.toLocaleDateString('es-CL')}`);
+const titulo = canonico ? canonico.nombre : `"${query}"`;
+console.log(`\n${titulo}  x${cantidad} un  |  ${nombreDia(fecha)} ${fecha.toLocaleDateString('es-CL')}`);
+if (canonico) console.log(`producto canonico: ${canonico.id}  (mismo articulo en cada tienda)`);
 console.log(`${universo.length} ofertas de ${porTienda.size} tienda(s)`);
 console.log(`criterio de orden: ${criterio === 'unidad-medida' ? '$ por kg/L' : '$ por unidad'}\n`);
 
@@ -130,7 +180,8 @@ for (const [i, d] of ranking.entries()) {
 
 for (const a of advertencias) console.log(`aviso: ${a}`);
 
-const dudas = advertenciasEquivalencia([...porTienda.values()]);
+// Con el catalogo canonico sabemos que es el mismo articulo: el ahorro es real.
+const dudas = canonico ? [] : advertenciasEquivalencia([...porTienda.values()]);
 const [mejor, segunda] = ranking;
 
 if (mejor && segunda) {
@@ -143,7 +194,7 @@ if (mejor && segunda) {
       console.log(`\nOJO: la diferencia de ${clp(ahorro)} entre ${mejor.tienda} y ${segunda.tienda}`);
       console.log('no es comparable todavia, porque no son el mismo producto:');
       for (const d of dudas) console.log(`   - ${d}`);
-      console.log('Falta la tabla de producto canonico para comparar de verdad.');
+      console.log(`Registralo con: npm run emparejar -- "${query}"`);
     }
   }
 }

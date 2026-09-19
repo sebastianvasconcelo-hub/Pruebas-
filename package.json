@@ -15,7 +15,9 @@
     "typecheck": "tsc --noEmit",
     "fingerprint": "tsx src/cli/fingerprint.ts",
     "nextdata": "tsx src/cli/nextdata.ts",
-    "inspeccionar": "tsx src/cli/inspeccionar.ts"
+    "inspeccionar": "tsx src/cli/inspeccionar.ts",
+    "emparejar": "tsx src/cli/emparejar.ts",
+    "catalogo": "tsx src/cli/catalogo.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
