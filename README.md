@@ -40,6 +40,9 @@ Por cada tienda VTEX reporta si responde, si devuelve JSON o HTML, cuantas
 ofertas salieron y que campos de precio traen. Guarda la respuesta cruda en
 `fixtures/` para poder seguir trabajando despues sin red.
 
+Si el probe falla, `npm run fingerprint` dice por que: que plataforma usa cada
+sitio y que rutas candidatas responden.
+
 Criterio de exito: si al menos Jumbo y Alvi devuelven JSON con precios, el
 proyecto es viable y lo que sigue es trabajo conocido. Si devuelven 403 o HTML,
 hay proteccion anti-bot y toca ir por navegador headless.
@@ -51,14 +54,40 @@ npm run comparar -- "arroz grado 1" --cantidad 3 --fecha 2026-09-24
 npm run comparar -- "arroz" --offline     # usando los fixtures, sin red
 ```
 
+## Hallazgo: la ruta clasica de VTEX no responde
+
+Ejecutado el 2026-09-19 desde una conexion residencial en Chile:
+
+| Tienda | `/api/catalog_system/pub/products/search` |
+|---|---|
+| Jumbo | HTTP 404 (text/html) |
+| Alvi | HTTP 404 (text/html) |
+| Santa Isabel | HTTP 404 (text/html) |
+| Unimarc | HTTP 500 |
+
+**404, no 403**: no es un bloqueo anti-bot, la ruta simplemente no existe en el
+dominio publico. El `content-type: text/html` indica que respondio la pagina de
+error del storefront, lo que es coherente con una aplicacion propia que no
+enruta `/api/catalog_system/*` hacia VTEX aunque el catalogo por detras si lo
+sea.
+
+Para resolverlo sin adivinar hay `npm run fingerprint`, que detecta la
+plataforma por cabeceras y por rastros en el HTML, y prueba una bateria de
+rutas candidatas (catalogo clasico, Intelligent Search, sessions, facets).
+
+Si ninguna sirve, la respuesta definitiva la da el propio sitio: DevTools ->
+Network -> filtro Fetch/XHR -> buscar un producto. La peticion que devuelve los
+productos es la ruta que hay que implementar.
+
 ## Que falta validar (en orden de importancia)
 
-Estas son hipotesis del codigo, no hechos comprobados. `npm run probe` sirve
-justamente para confirmarlas o tumbarlas.
+Estas son hipotesis del codigo, no hechos comprobados.
 
-1. **Que el endpoint publico de VTEX siga abierto.** `src/adapters/vtex.ts`
-   asume `GET /api/catalog_system/pub/products/search?ft=...` sin
-   autenticacion.
+1. **Donde esta realmente la API de cada cadena.** La hipotesis original
+   (`/api/catalog_system/pub/products/search`) quedo descartada arriba. El
+   mapeo de `src/adapters/vtex.ts` sigue siendo valido si la cadena expone la
+   API clasica en otro host; si usa Intelligent Search, el esquema de respuesta
+   es distinto y hay que escribir un segundo mapeo.
 2. **Que `Price < ListPrice` signifique precio de socio.** Es la hipotesis mas
    fragil: puede que sea solo una promocion general, y que el precio Prime o
    socio Alvi requiera sesion iniciada. Compara lo que devuelve el probe contra
@@ -110,6 +139,7 @@ src/
     efectivo.ts            motor de precio efectivo y comparacion
   cli/
     probe.ts               valida las APIs reales
+    fingerprint.ts         descubre plataforma y rutas cuando el probe falla
     comparar.ts            compara un producto entre tiendas
 ```
 

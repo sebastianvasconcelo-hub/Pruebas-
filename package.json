@@ -4,13 +4,16 @@
   "private": true,
   "type": "module",
   "description": "Comparador de precios de supermercados chilenos con motor de precio efectivo (membresias, cashback y escalas por cantidad)",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "probe": "tsx src/cli/probe.ts",
     "comparar": "tsx src/cli/comparar.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "fingerprint": "tsx src/cli/fingerprint.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
