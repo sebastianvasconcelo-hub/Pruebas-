@@ -9,8 +9,7 @@
  * ofertas eventuales que de otro modo se pasan por alto.
  */
 import { readFile, writeFile } from 'node:fs/promises';
-import { tienda } from '../adapters/index.js';
-import { buscarEnSitio, leerFicha } from '../adapters/html.js';
+import { traerOfertas } from '../canonico/traer.js';
 import { evaluarCanasta, historialDe, type EntradaCanasta, type Historial } from '../canasta/evaluar.js';
 import { cargar, ofertasDe } from '../canonico/catalogo.js';
 import { nombreDia, parsearFechaLocal } from '../normalizar/fecha.js';
@@ -52,13 +51,7 @@ console.log('Consultando tiendas...\n');
 const entradas: EntradaCanasta[] = [];
 for (const producto of catalogo.productos) {
   const resultados = await Promise.allSettled(
-    producto.equivalencias.map(async (eq) => {
-      const cfg = tienda(eq.tienda);
-      if (!cfg?.soportado) return [];
-      if (eq.url) return leerFicha(cfg, eq.url);
-      if (!cfg.busqueda) return [];
-      return buscarEnSitio(cfg, eq.nombre);
-    }),
+    producto.equivalencias.map((eq) => traerOfertas(eq)),
   );
 
   const encontradas: Oferta[] = [];

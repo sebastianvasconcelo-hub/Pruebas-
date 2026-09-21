@@ -110,3 +110,9 @@ export function ofertasDe(producto: ProductoCanonico, ofertas: Oferta[]): Oferta
   }
   return elegidas;
 }
+
+/** Quita un producto del catalogo. Devuelve null si ese id no existia. */
+export function borrar(catalogo: Catalogo, id: string): Catalogo | null {
+  if (!catalogo.productos.some((p) => p.id === id)) return null;
+  return { ...catalogo, productos: catalogo.productos.filter((p) => p.id !== id) };
+}

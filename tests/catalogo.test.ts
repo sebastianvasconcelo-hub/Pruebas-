@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  borrar,
   buscarPorId,
   buscarPorNombre,
   buscarPorSku,
@@ -130,5 +131,22 @@ describe('cargar y guardar', () => {
     const ruta = join(dir, 'catalogo.json');
     await guardar({ version: 99, productos: [] } as unknown as Catalogo, ruta);
     expect(await cargar(ruta)).toEqual(CATALOGO_VACIO);
+  });
+});
+
+describe('borrar', () => {
+  const catalogo: Catalogo = { version: 1, productos: [ARROZ] };
+
+  it('quita el producto pedido', () => {
+    expect(borrar(catalogo, ARROZ.id)?.productos).toEqual([]);
+  });
+
+  it('devuelve null si el id no existe, para poder avisar', () => {
+    expect(borrar(catalogo, 'no-existe')).toBeNull();
+  });
+
+  it('no muta el catalogo original', () => {
+    borrar(catalogo, ARROZ.id);
+    expect(catalogo.productos).toHaveLength(1);
   });
 });

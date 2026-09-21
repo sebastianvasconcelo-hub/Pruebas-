@@ -30,7 +30,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 175 tests, todos offline
+npm test          # 178 tests, todos offline
 ```
 
 ### Comparar
@@ -81,6 +81,13 @@ sola tienda, contando solo las tiendas que cubren la canasta entera: un total
 bajo con media cobertura no es comparable.
 
 El historial queda en `historial.json`.
+
+Para ver o limpiar lo registrado:
+
+```bash
+npm run catalogo
+npm run catalogo -- --borrar <id>
+```
 
 ### Producto canonico: comparar el mismo articulo
 
@@ -288,6 +295,12 @@ asi que el flujo real queda partido en dos:
 
 - **Busqueda** para descubrir productos y emparejarlos, una sola vez.
 - **Ficha** para los precios exactos, cada vez que compares.
+
+La ficha se pide **solo donde la busqueda se queda corta**, o sea en Jumbo. La
+busqueda de Alvi ya trae precios, priceSteps, formato y EAN; ademas, la ruta de
+ficha que declara su catalogo (`detailUrl`) responde 404, asi que pedirla solo
+perdia el producto. Si una ficha falla, se cae a la busqueda en vez de quedarse
+sin datos.
 
 El catalogo canonico guarda la URL de cada equivalencia justamente para eso:
 son ~150 fichas, una por producto registrado.

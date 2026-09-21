@@ -79,7 +79,12 @@ try {
 
   // 2. Nombre canonico: como lo llamas tu, no como lo llama la cadena.
   const nombreSugerido = base.nombre;
-  const nombre = (await rl.question(`\nNombre canonico [${nombreSugerido}]: `)).trim() || nombreSugerido;
+  let nombre = (await rl.question(`\nNombre canonico [${nombreSugerido}]: `)).trim() || nombreSugerido;
+  // Un nombre de una o dos letras casi siempre es un enter mal dado.
+  while (nombre.length < 3) {
+    console.log('   Muy corto: escribe al menos 3 caracteres, o enter para usar el sugerido.');
+    nombre = (await rl.question(`Nombre canonico [${nombreSugerido}]: `)).trim() || nombreSugerido;
+  }
 
   const consumoTexto = (await rl.question('Cuantas unidades consumes al mes? (enter para omitir) ')).trim();
   const consumoMensual = consumoTexto === '' ? undefined : Number(consumoTexto);
