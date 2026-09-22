@@ -26,6 +26,13 @@ export interface LineaCanasta {
   cambioDeTienda: boolean;
   /** Ninguna tienda entrego datos para este producto. */
   sinDatos: boolean;
+  /**
+   * Tiendas mapeadas que no aparecieron en el resultado, y tiendas soportadas
+   * que ni siquiera estan mapeadas. Sin esto, un producto con una sola tienda
+   * se ve igual que una comparacion real.
+   */
+  tiendasSinDatos: string[];
+  tiendasSinMapear: string[];
 }
 
 export interface ResumenCanasta {
@@ -42,6 +49,8 @@ export interface ResumenCanasta {
 export interface EntradaCanasta {
   producto: ProductoCanonico;
   ofertas: Oferta[];
+  /** Tiendas que la app soporta, para detectar las que faltan por mapear. */
+  tiendasSoportadas?: string[];
 }
 
 /** Historial: en que tienda convenia cada producto la vez anterior. */
@@ -55,8 +64,12 @@ export function evaluarCanasta(
 ): ResumenCanasta {
   const lineas: LineaCanasta[] = [];
 
-  for (const { producto, ofertas } of entradas) {
+  for (const { producto, ofertas, tiendasSoportadas = [] } of entradas) {
     const cantidad = producto.cantidadHabitual ?? 1;
+    const mapeadas = producto.equivalencias.map((e) => e.tienda);
+    const conDatos = new Set(ofertas.map((o) => o.tienda));
+    const tiendasSinDatos = mapeadas.filter((t) => !conDatos.has(t));
+    const tiendasSinMapear = tiendasSoportadas.filter((t) => !mapeadas.includes(t));
     const disponibles = ofertas.filter((o) => o.disponible);
     const universo = disponibles.length > 0 ? disponibles : ofertas;
 
@@ -69,6 +82,8 @@ export function evaluarCanasta(
         tiendaPrevia: previo[producto.id],
         cambioDeTienda: false,
         sinDatos: true,
+        tiendasSinDatos,
+        tiendasSinMapear,
       });
       continue;
     }
@@ -91,6 +106,8 @@ export function evaluarCanasta(
       // Solo es cambio si antes habia un ganador distinto: la primera vez no.
       cambioDeTienda: Boolean(ganador && tiendaPrevia && tiendaPrevia !== ganador.tienda),
       sinDatos: false,
+      tiendasSinDatos,
+      tiendasSinMapear,
     });
   }
 

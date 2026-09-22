@@ -9,6 +9,7 @@
  * ofertas eventuales que de otro modo se pasan por alto.
  */
 import { readFile, writeFile } from 'node:fs/promises';
+import { TIENDAS } from '../adapters/index.js';
 import { traerOfertas } from '../canonico/traer.js';
 import { evaluarCanasta, historialDe, type EntradaCanasta, type Historial } from '../canasta/evaluar.js';
 import { cargar, ofertasDe } from '../canonico/catalogo.js';
@@ -59,7 +60,11 @@ for (const producto of catalogo.productos) {
     if (r.status === 'fulfilled') encontradas.push(...r.value);
     else console.error(`  aviso (${producto.id}): ${r.reason instanceof Error ? r.reason.message : r.reason}`);
   }
-  entradas.push({ producto, ofertas: ofertasDe(producto, encontradas) });
+  entradas.push({
+    producto,
+    ofertas: ofertasDe(producto, encontradas),
+    tiendasSoportadas: TIENDAS.filter((t) => t.soportado && t.busqueda).map((t) => t.id),
+  });
 }
 
 const resumen = evaluarCanasta(entradas, PERFIL_POR_DEFECTO, { fecha }, previo);
@@ -94,6 +99,10 @@ for (const l of resumen.lineas) {
   );
   if (l.cantidad > 1) console.log(`      ${l.cantidad} un a ${clp(g.precioUnitarioBruto)} c/u (${g.origenPrecio})`);
   for (const nota of g.notas) console.log(`      - ${nota}`);
+  if (l.ranking.length < 2) {
+    const falta = [...l.tiendasSinMapear, ...l.tiendasSinDatos];
+    console.log(`      sin comparacion: falta ${falta.join(', ') || 'otra tienda'}`);
+  }
 }
 
 console.log(`\nTOTAL comprando cada cosa donde convenga: ${clp(resumen.totalOptimo)}`);

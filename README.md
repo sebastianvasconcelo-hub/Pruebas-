@@ -30,7 +30,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 178 tests, todos offline
+npm test          # 182 tests, todos offline
 ```
 
 ### Comparar
@@ -81,6 +81,12 @@ sola tienda, contando solo las tiendas que cubren la canasta entera: un total
 bajo con media cobertura no es comparable.
 
 El historial queda en `historial.json`.
+
+Cuando un producto aparece con una sola tienda, la salida lo dice y distingue
+las dos causas, porque piden acciones distintas: la tienda **no esta mapeada**
+en el catalogo (se arregla con `emparejar`) o **si lo esta pero hoy no devolvio
+datos** (se reintenta). Una tabla de una fila no es una comparacion y no debe
+presentarse como tal.
 
 Para ver o limpiar lo registrado:
 

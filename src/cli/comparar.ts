@@ -177,6 +177,29 @@ for (const [i, d] of ranking.entries()) {
 
 for (const a of advertencias) console.log(`aviso: ${a}`);
 
+/**
+ * Una tabla de una fila no es una comparacion.
+ *
+ * Distingue las dos causas, que piden acciones distintas: la tienda no esta
+ * mapeada en el catalogo, o si lo esta pero hoy no devolvio nada.
+ */
+if (canonico) {
+  const mapeadas = canonico.equivalencias.map((e) => e.tienda);
+  const conDatos = new Set(universo.map((o) => o.tienda));
+  const sinDatos = mapeadas.filter((t) => !conDatos.has(t));
+  const soportadas = TIENDAS.filter((t) => t.soportado && t.busqueda).map((t) => t.id);
+  const sinMapear = soportadas.filter((t) => !mapeadas.includes(t));
+
+  if (sinDatos.length > 0) {
+    console.log(`\naviso: ${sinDatos.join(', ')} esta mapeado pero hoy no devolvio datos.`);
+  }
+  if (sinMapear.length > 0) {
+    console.log(`\nEste producto no tiene mapeado: ${sinMapear.join(', ')}.`);
+    console.log('No se esta comparando con esa(s) tienda(s). Para agregarla:');
+    console.log(`   npm run emparejar -- "${canonico.nombre}"`);
+  }
+}
+
 // Con el catalogo canonico sabemos que es el mismo articulo: el ahorro es real.
 const dudas = canonico ? [] : advertenciasEquivalencia([...porTienda.values()]);
 const [mejor, segunda] = ranking;

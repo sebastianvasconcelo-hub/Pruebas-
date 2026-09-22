@@ -137,3 +137,62 @@ describe('historialDe', () => {
     expect(historialDe(r)).toEqual({});
   });
 });
+
+describe('cobertura por tienda', () => {
+  const conAmbas = producto({
+    equivalencias: [
+      { tienda: 'alvi', sku: 'a', nombre: 'Leche', origen: 'manual', confirmadoEn: '2026-09-22' },
+      { tienda: 'jumbo', sku: 'j', nombre: 'Leche', origen: 'manual', confirmadoEn: '2026-09-22' },
+    ],
+  });
+  const soloAlvi = producto({
+    equivalencias: [
+      { tienda: 'alvi', sku: 'a', nombre: 'Leche', origen: 'manual', confirmadoEn: '2026-09-22' },
+    ],
+  });
+
+  it('reporta la tienda mapeada que no devolvio datos', () => {
+    const r = evaluarCanasta(
+      [{ producto: conAmbas, ofertas: [oferta('alvi', 1090)] }],
+      PERFIL_POR_DEFECTO,
+      { fecha: MARTES },
+    );
+    expect(r.lineas[0]!.tiendasSinDatos).toEqual(['jumbo']);
+    expect(r.lineas[0]!.tiendasSinMapear).toEqual([]);
+  });
+
+  it('reporta la tienda soportada que falta por mapear', () => {
+    const r = evaluarCanasta(
+      [{ producto: soloAlvi, ofertas: [oferta('alvi', 1090)], tiendasSoportadas: ['alvi', 'jumbo'] }],
+      PERFIL_POR_DEFECTO,
+      { fecha: MARTES },
+    );
+    // Son causas distintas: una se arregla reintentando, la otra emparejando.
+    expect(r.lineas[0]!.tiendasSinMapear).toEqual(['jumbo']);
+    expect(r.lineas[0]!.tiendasSinDatos).toEqual([]);
+  });
+
+  it('no reporta nada cuando ambas tiendas respondieron', () => {
+    const r = evaluarCanasta(
+      [{
+        producto: conAmbas,
+        ofertas: [oferta('alvi', 1090), oferta('jumbo', 1290)],
+        tiendasSoportadas: ['alvi', 'jumbo'],
+      }],
+      PERFIL_POR_DEFECTO,
+      { fecha: MARTES },
+    );
+    expect(r.lineas[0]!.tiendasSinDatos).toEqual([]);
+    expect(r.lineas[0]!.tiendasSinMapear).toEqual([]);
+  });
+
+  it('tambien las reporta cuando el producto quedo sin datos del todo', () => {
+    const r = evaluarCanasta(
+      [{ producto: conAmbas, ofertas: [], tiendasSoportadas: ['alvi', 'jumbo'] }],
+      PERFIL_POR_DEFECTO,
+      { fecha: MARTES },
+    );
+    expect(r.lineas[0]!.sinDatos).toBe(true);
+    expect(r.lineas[0]!.tiendasSinDatos).toEqual(['alvi', 'jumbo']);
+  });
+});
