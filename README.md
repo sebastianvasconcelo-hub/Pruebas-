@@ -30,7 +30,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 182 tests, todos offline
+npm test          # 188 tests, todos offline
 ```
 
 ### Comparar
@@ -122,8 +122,13 @@ npm run catalogo                 # lo registrado hasta ahora
 ```
 
 Cuando el producto esta en el catalogo, el comparador busca en cada tienda por
-el nombre que esa tienda usa, elige la oferta por SKU (con el EAN de respaldo
-si la tienda cambio el SKU) y compara el mismo articulo. Ahi el ahorro que
+el nombre que esa tienda usa, elige la oferta por SKU, EAN o URL y compara el
+mismo articulo.
+
+La URL no es redundante: una misma tienda puede entregar identificadores
+distintos segun de donde venga el dato. La busqueda de Jumbo publica un
+ItemList de schema.org sin sku, asi que se deriva del slug de la direccion,
+mientras que la ficha entrega su `skuId` numerico. Ahi el ahorro que
 reporta es real, y por eso deja de mostrar las advertencias de equivalencia.
 
 El `consumoMensual` que declares alimenta el costo de bodega y la decision

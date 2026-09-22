@@ -92,20 +92,38 @@ export function equivalenciaDesdeOferta(oferta: Oferta, origen: 'ean' | 'manual'
   };
 }
 
+/** Dos URL apuntan al mismo producto, ignorando protocolo, query y barra final. */
+export function mismaUrl(a: string | undefined, b: string | undefined): boolean {
+  if (!a || !b) return false;
+  const limpiar = (u: string) =>
+    u
+      .toLowerCase()
+      .replace(/^https?:\/\//, '')
+      .replace(/^www\./, '')
+      .split(/[?#]/)[0]!
+      .replace(/\/+$/, '');
+  return limpiar(a) === limpiar(b);
+}
+
 /**
  * De todas las ofertas recogidas, las que corresponden a un producto canonico.
  *
- * Se empareja por SKU, que es lo que la equivalencia guarda. El EAN sirve de
- * respaldo cuando la tienda cambia el SKU pero mantiene el articulo.
+ * Se empareja por SKU, EAN o URL, en ese orden. La URL no es redundante: una
+ * misma tienda puede entregar identificadores distintos segun de donde venga
+ * el dato. En Jumbo, la busqueda publica un ItemList de schema.org sin sku, asi
+ * que se deriva del slug de la direccion, mientras que la ficha entrega su
+ * `skuId` numerico. Emparejando solo por SKU, un producto registrado desde la
+ * busqueda no se reconocia al leerlo desde la ficha, y como Jumbo no expone EAN
+ * la oferta se descartaba en silencio.
  */
 export function ofertasDe(producto: ProductoCanonico, ofertas: Oferta[]): Oferta[] {
   const elegidas: Oferta[] = [];
   for (const eq of producto.equivalencias) {
-    const porSku = ofertas.find((o) => o.tienda === eq.tienda && o.sku === eq.sku);
-    const porEan = eq.ean
-      ? ofertas.find((o) => o.tienda === eq.tienda && o.ean === eq.ean)
-      : undefined;
-    const elegida = porSku ?? porEan;
+    const deLaTienda = ofertas.filter((o) => o.tienda === eq.tienda);
+    const elegida =
+      deLaTienda.find((o) => o.sku === eq.sku) ??
+      (eq.ean ? deLaTienda.find((o) => o.ean === eq.ean) : undefined) ??
+      deLaTienda.find((o) => mismaUrl(o.url, eq.url));
     if (elegida) elegidas.push(elegida);
   }
   return elegidas;

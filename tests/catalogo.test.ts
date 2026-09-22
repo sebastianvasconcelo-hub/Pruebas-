@@ -12,6 +12,7 @@ import {
   fijarEquivalencia,
   guardar,
   idDesdeNombre,
+  mismaUrl,
   ofertasDe,
   upsert,
 } from '../src/canonico/catalogo.js';
@@ -148,5 +149,58 @@ describe('borrar', () => {
   it('no muta el catalogo original', () => {
     borrar(catalogo, ARROZ.id);
     expect(catalogo.productos).toHaveLength(1);
+  });
+});
+
+describe('mismaUrl', () => {
+  it('ignora protocolo, www, query y barra final', () => {
+    expect(mismaUrl('https://www.jumbo.cl/leche/p', 'http://jumbo.cl/leche/p/')).toBe(true);
+    expect(mismaUrl('https://www.jumbo.cl/leche/p?sc=1', 'https://www.jumbo.cl/leche/p')).toBe(true);
+  });
+
+  it('distingue productos distintos', () => {
+    expect(mismaUrl('https://www.jumbo.cl/leche/p', 'https://www.jumbo.cl/arroz/p')).toBe(false);
+  });
+
+  it('es falso si falta alguna', () => {
+    expect(mismaUrl(undefined, 'https://www.jumbo.cl/leche/p')).toBe(false);
+  });
+});
+
+describe('ofertasDe: identificadores distintos segun el origen', () => {
+  // Jumbo entrega el slug en la busqueda y el skuId numerico en la ficha.
+  const JUMBO_DESDE_BUSQUEDA: ProductoCanonico = {
+    id: 'leche-colun',
+    nombre: 'Leche Colun semidescremada 1 L',
+    equivalencias: [
+      {
+        tienda: 'jumbo',
+        sku: 'leche-semidescremada-colun-1-l',
+        nombre: 'Leche Colun',
+        url: 'https://www.jumbo.cl/leche-semidescremada-colun-1-l/p',
+        origen: 'manual',
+        confirmadoEn: '2026-09-22',
+      },
+    ],
+  };
+
+  it('reconoce la oferta de la ficha aunque el sku no coincida', () => {
+    const desdeFicha = oferta({
+      tienda: 'jumbo',
+      sku: '10995',
+      url: 'https://www.jumbo.cl/leche-semidescremada-colun-1-l/p',
+    });
+    expect(ofertasDe(JUMBO_DESDE_BUSQUEDA, [desdeFicha])).toHaveLength(1);
+  });
+
+  it('no recoge un producto distinto de la misma tienda', () => {
+    const otro = oferta({ tienda: 'jumbo', sku: '999', url: 'https://www.jumbo.cl/arroz/p' });
+    expect(ofertasDe(JUMBO_DESDE_BUSQUEDA, [otro])).toEqual([]);
+  });
+
+  it('el SKU sigue teniendo prioridad sobre la URL', () => {
+    const porSku = oferta({ tienda: 'jumbo', sku: 'leche-semidescremada-colun-1-l', nombre: 'por sku' });
+    const porUrl = oferta({ tienda: 'jumbo', sku: '10995', url: 'https://www.jumbo.cl/leche-semidescremada-colun-1-l/p', nombre: 'por url' });
+    expect(ofertasDe(JUMBO_DESDE_BUSQUEDA, [porUrl, porSku])[0]!.nombre).toBe('por sku');
   });
 });
