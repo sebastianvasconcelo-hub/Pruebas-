@@ -30,7 +30,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 221 tests, todos offline
+npm test          # 239 tests, todos offline
 ```
 
 ### Comparar
@@ -75,6 +75,40 @@ el encabezado "Socio", junto a un "Unete al Club Alvi", y el precio regular
 `requiereMembresia` y el motor solo las aplica si tu perfil declara esa
 membresia; si no, usa el precio regular y avisa cuanto te estas perdiendo.
 Se configura en `src/precios/reglas.ts`.
+
+### La pregunta que responde
+
+No es "cuanto cuesta comprar N unidades" sino al reves: **cual es el precio mas
+barato al que puedes llegar, y cuanta cantidad exige**. Quien compra por volumen
+en un mayorista, con cuotas sin interes y espacio para guardar, decide cuanto
+llevar en funcion del precio, no antes de mirarlo. Por eso la cantidad es parte
+de la respuesta y no un dato de entrada.
+
+```
+>> alvi       $1.450/kg      llevando  10 un    total $14.500
+     Arroz Tucapel gran seleccion G2 1 Kg
+     -30.6% respecto de llevar 1 un ($2.090/kg)
+```
+
+El orden entre tiendas es por el mejor precio que cada una permite alcanzar, no
+por lo que cuesta una unidad: un mayorista puede ser mas caro al detalle y el
+mas barato llevando volumen, y ordenar por precio unitario lo dejaria segundo.
+
+Cuando no quieras llevarte la bodega entera:
+
+```bash
+npm run comparar -- --producto <id> --maximo 12
+npm run canasta -- --maximo 12
+```
+
+Y para el precio a una cantidad exacta, sin proponer otra:
+
+```bash
+npm run comparar -- --producto <id> --cantidad 3
+```
+
+`cantidadHabitual` pasa a ser la referencia contra la que se mide el ahorro, no
+la cantidad que se compra.
 
 ### La canasta habitual
 

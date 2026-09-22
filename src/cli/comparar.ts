@@ -1,48 +1,50 @@
 /**
- * Compara un producto entre tiendas aplicando tus reglas reales.
+ * Compara un producto entre tiendas y responde la pregunta que importa:
+ * cual es el precio mas barato al que puedes llegar y cuanto tienes que
+ * llevar para conseguirlo.
  *
- *   npm run comparar -- "arroz"
- *   npm run comparar -- "arroz" --cantidad 3 --fecha 2026-09-24
- *   npm run comparar -- "arroz" --offline      # usa fixtures/, sin red
+ *   npm run comparar -- --producto <id>
+ *   npm run comparar -- --producto <id> --maximo 12   tope de unidades
+ *   npm run comparar -- --producto <id> --cantidad 3  precio a esa cantidad exacta
+ *   npm run comparar -- "arroz"                       algo no registrado
+ *   npm run comparar -- "arroz" --offline             desde fixtures, sin red
  */
 import { readdir, readFile } from 'node:fs/promises';
 import { TIENDAS, tienda } from '../adapters/index.js';
-import { buscarPorId, buscarPorNombre, cargar, ofertasDe } from '../canonico/catalogo.js';
-import type { ProductoCanonico } from '../canonico/tipos.js';
 import { buscarEnSitio } from '../adapters/html.js';
-import { traerOfertas } from '../canonico/traer.js';
-import { Descartes } from '../diagnostico.js';
 import { mapearAlvi } from '../adapters/alvi.js';
 import { mapearJsonLd } from '../adapters/jsonld.js';
 import { mapearVtex } from '../adapters/vtex.js';
+import { buscarPorId, buscarPorNombre, cargar, ofertasDe } from '../canonico/catalogo.js';
+import { traerOfertas } from '../canonico/traer.js';
+import type { ProductoCanonico } from '../canonico/tipos.js';
+import { Descartes } from '../diagnostico.js';
 import { nombreDia, parsearFechaLocal } from '../normalizar/fecha.js';
 import { parsearContenido } from '../normalizar/unidad.js';
-import { comparar } from '../precios/efectivo.js';
-import { escalasPendientes, informarEscalas } from '../precios/escalas.js';
 import { advertenciasEquivalencia } from '../precios/equivalencia.js';
+import { escalasPendientes, informarEscalas } from '../precios/escalas.js';
+import { compararOptimo } from '../precios/optimo.js';
 import { PERFIL_POR_DEFECTO } from '../precios/reglas.js';
 import type { Oferta } from '../tipos.js';
 
 const args = process.argv.slice(2);
-const query = args.find((a) => !a.startsWith('--'));
-const productoPedido = valorFlag('--producto');
-const offline = args.includes('--offline');
-// La cantidad explicita manda; si no, la habitual del producto canonico, que
-// se resuelve mas abajo una vez cargado el catalogo.
-const cantidadPedida = valorFlag('--cantidad') ? Number(valorFlag('--cantidad')) : undefined;
-// parsearFechaLocal y no new Date(): "2026-09-25" en UTC cae el dia anterior
-// en Chile, y el cashback depende del dia de la semana.
-const fecha = valorFlag('--fecha') ? parsearFechaLocal(valorFlag('--fecha')!) : new Date();
-
 function valorFlag(nombre: string): string | undefined {
   const i = args.indexOf(nombre);
   return i >= 0 ? args[i + 1] : undefined;
 }
 
+const query = args.find((a) => !a.startsWith('--'));
+const productoPedido = valorFlag('--producto');
+const offline = args.includes('--offline');
+const detallar = args.includes('--diagnostico');
+const cantidadPedida = valorFlag('--cantidad') ? Number(valorFlag('--cantidad')) : undefined;
+const maximoPedido = valorFlag('--maximo') ? Number(valorFlag('--maximo')) : undefined;
+const fecha = valorFlag('--fecha') ? parsearFechaLocal(valorFlag('--fecha')!) : new Date();
+
 if (!query && !productoPedido) {
   console.error(
-    'Uso: npm run comparar -- "<producto>" [--cantidad N] [--fecha YYYY-MM-DD] [--offline]\n' +
-      '     npm run comparar -- --producto <id-canonico> [--cantidad N]',
+    'Uso: npm run comparar -- "<producto>" [--maximo N] [--cantidad N] [--fecha YYYY-MM-DD] [--offline]\n' +
+      '     npm run comparar -- --producto <id-canonico> [--maximo N]',
   );
   process.exit(1);
 }
@@ -50,38 +52,36 @@ if (Number.isNaN(fecha.getTime())) {
   console.error('Fecha invalida. Formato esperado: YYYY-MM-DD');
   process.exit(1);
 }
-if (cantidadPedida !== undefined && (!Number.isInteger(cantidadPedida) || cantidadPedida < 1)) {
-  console.error('--cantidad debe ser un entero mayor o igual a 1');
-  process.exit(1);
+for (const [nombre, valor] of [['--cantidad', cantidadPedida], ['--maximo', maximoPedido]] as const) {
+  if (valor !== undefined && (!Number.isInteger(valor) || valor < 1)) {
+    console.error(`${nombre} debe ser un entero mayor o igual a 1`);
+    process.exit(1);
+  }
 }
 
 const clp = (n: number) => `$${Math.round(n).toLocaleString('es-CL')}`;
-
-// Registro de todo lo que el pipeline bota, para que nada desaparezca callado.
 const descartes = new Descartes();
-const detallar = args.includes('--diagnostico');
 
 async function desdeFixtures(q: string): Promise<Oferta[]> {
   const archivos = (await readdir('fixtures')).filter((f) => f.endsWith('.json'));
   const ofertas: Oferta[] = [];
-
   for (const archivo of archivos) {
     const cfg = tienda(archivo.split('-')[0] ?? '');
     if (!cfg) continue;
     const crudo = JSON.parse(await readFile(`fixtures/${archivo}`, 'utf8'));
-    if (cfg.motor === 'nextdata') ofertas.push(...mapearAlvi(cfg, crudo));
-    else if (cfg.motor === 'jsonld') ofertas.push(...mapearJsonLd(cfg, [crudo]));
+    if (cfg.motor === 'nextdata') ofertas.push(...mapearAlvi(cfg, crudo, descartes));
+    else if (cfg.motor === 'jsonld') ofertas.push(...mapearJsonLd(cfg, [crudo], descartes));
     else ofertas.push(...mapearVtex(cfg, crudo));
   }
-
   const termino = q.toLowerCase().split(' ')[0]!;
   return ofertas.filter((o) => o.nombre.toLowerCase().includes(termino));
 }
 
 async function desdeRed(q: string): Promise<Oferta[]> {
   const soportadas = TIENDAS.filter((t) => t.soportado && t.busqueda);
-  const resultados = await Promise.allSettled(soportadas.map((cfg) => buscarEnSitio(cfg, q)));
-
+  const resultados = await Promise.allSettled(
+    soportadas.map((cfg) => buscarEnSitio(cfg, q, { descartes })),
+  );
   const ofertas: Oferta[] = [];
   for (const r of resultados) {
     if (r.status === 'fulfilled') ofertas.push(...r.value);
@@ -90,16 +90,10 @@ async function desdeRed(q: string): Promise<Oferta[]> {
   return ofertas;
 }
 
-/**
- * Trae las ofertas de un producto canonico buscando en cada tienda por el
- * nombre que esa tienda usa, que da muchas mas coincidencias que buscar el
- * nombre canonico en todas.
- */
 async function desdeCatalogo(producto: ProductoCanonico): Promise<Oferta[]> {
   const resultados = await Promise.allSettled(
     producto.equivalencias.map((eq) => traerOfertas(eq, descartes)),
   );
-
   const encontradas: Oferta[] = [];
   for (const r of resultados) {
     if (r.status === 'fulfilled') encontradas.push(...r.value);
@@ -110,8 +104,6 @@ async function desdeCatalogo(producto: ProductoCanonico): Promise<Oferta[]> {
 
 const catalogo = await cargar();
 
-// El catalogo manda: si el producto esta registrado, se compara el mismo
-// articulo en cada tienda en vez de lo mas barato que suene parecido.
 let canonico: ProductoCanonico | undefined;
 if (productoPedido) {
   canonico = buscarPorId(catalogo, productoPedido);
@@ -124,26 +116,22 @@ if (productoPedido) {
   canonico = buscarPorNombre(catalogo, query)[0];
 }
 
-const cantidad = cantidadPedida ?? canonico?.cantidadHabitual ?? 1;
-
 const todas = canonico && !offline
   ? await desdeCatalogo(canonico)
   : offline
     ? await desdeFixtures(query ?? canonico!.nombre)
     : await desdeRed(query!);
+
 const disponibles = todas.filter((o) => o.disponible);
 const universo = disponibles.length > 0 ? disponibles : todas;
 
 if (universo.length === 0) {
-  console.log(`\nSin resultados para "${query}"${offline ? ' en fixtures/' : ''}.\n`);
+  console.log(`\nSin resultados para "${query ?? canonico?.nombre}"${offline ? ' en fixtures/' : ''}.\n`);
+  descartes.imprimir(console.log);
   process.exit(0);
 }
 
-/**
- * Una oferta por tienda, elegida por $/kg y no por precio de etiqueta: entre
- * "arroz 1 kg a $1.490" y "arroz 5 kg a $5.990" el barato es el segundo, y
- * elegir por etiqueta reproduciria el error que esta app existe para evitar.
- */
+/** Una oferta por tienda, elegida por $/kg y no por precio de etiqueta. */
 function costoComparable(o: Oferta): number {
   const precio = o.precioSocio ?? o.precioLista;
   const contenido = o.contenido ?? parsearContenido(o.nombre);
@@ -156,42 +144,58 @@ for (const o of universo) {
   if (!previa || costoComparable(o) < costoComparable(previa)) porTienda.set(o.tienda, o);
 }
 
-const { ranking, criterio, advertencias } = comparar(
+// Una cantidad exacta pedida fija tambien el tope: se quiere ese precio, no otro.
+const referencia = cantidadPedida ?? canonico?.cantidadHabitual ?? 1;
+const maximo = cantidadPedida ?? maximoPedido;
+
+const { ranking, criterio, advertencias } = compararOptimo(
   [...porTienda.values()],
-  cantidad,
   PERFIL_POR_DEFECTO,
   { fecha, consumoMensual: canonico?.consumoMensual },
+  { referencia, maximo },
 );
 
 const titulo = canonico ? canonico.nombre : `"${query}"`;
-console.log(`\n${titulo}  x${cantidad} un  |  ${nombreDia(fecha)} ${fecha.toLocaleDateString('es-CL')}`);
+console.log(`\n${titulo}  |  ${nombreDia(fecha)} ${fecha.toLocaleDateString('es-CL')}`);
 if (canonico) console.log(`producto canonico: ${canonico.id}  (mismo articulo en cada tienda)`);
-console.log(`${universo.length} ofertas de ${porTienda.size} tienda(s)`);
-console.log(`criterio de orden: ${criterio === 'unidad-medida' ? '$ por kg/L' : '$ por unidad'}\n`);
+console.log(
+  `${universo.length} ofertas de ${porTienda.size} tienda(s)  |  ` +
+    `orden por ${criterio === 'unidad-medida' ? 'mejor $ por kg/L alcanzable' : 'mejor $ por unidad alcanzable'}` +
+    `${maximo !== undefined ? `  |  tope ${maximo} un` : ''}\n`,
+);
 
-for (const [i, d] of ranking.entries()) {
-  const marca = i === 0 ? '>>' : '  ';
-  const unidadMedida = d.porUnidadMedida
+for (const [i, o] of ranking.entries()) {
+  const d = o.desglose;
+  const medida = d.porUnidadMedida
     ? `${clp(d.porUnidadMedida.valor)}/${d.porUnidadMedida.base}`
-    : 'formato no deducible';
-  console.log(`${marca} ${d.tienda.padEnd(12)} ${unidadMedida.padEnd(18)} total ${clp(d.totalEfectivo)}`);
-  console.log(`     ${d.nombre}`);
+    : `${clp(d.unitarioEfectivo)}/un`;
+
+  // El titular es el mejor precio y la cantidad que exige.
   console.log(
-    `     unitario ${clp(d.precioUnitarioBruto)} (${d.origenPrecio})` +
-      (d.descuentoCashback > 0 ? `  cashback -${clp(d.descuentoCashback)}` : ''),
+    `${i === 0 ? '>>' : '  '} ${o.oferta.tienda.padEnd(10)} ${medida.padEnd(14)} ` +
+      `llevando ${String(o.cantidad).padStart(3)} un    total ${clp(d.totalEfectivo)}`,
   );
+  console.log(`     ${o.oferta.nombre}`);
+
+  if (o.exigeLlevarMas) {
+    const ref = o.referencia.porUnidadMedida
+      ? `${clp(o.referencia.porUnidadMedida.valor)}/${o.referencia.porUnidadMedida.base}`
+      : clp(o.referencia.unitarioEfectivo);
+    console.log(`     -${o.ahorroPorcentaje}% respecto de llevar ${o.referencia.cantidad} un (${ref})`);
+  }
+
+  console.log(`     unitario ${clp(d.precioUnitarioBruto)} (${d.origenPrecio})` +
+    (d.descuentoCashback > 0 ? `  cashback -${clp(d.descuentoCashback)}` : ''));
   for (const nota of d.notas) console.log(`     - ${nota}`);
 
-  // Las escalas que no aplican a esta cantidad siguen siendo informacion: son
-  // las que permiten decidir si conviene llevar mas.
-  const oferta = porTienda.get(d.tienda)!;
-  for (const e of escalasPendientes(informarEscalas(oferta, cantidad, d.precioUnitarioBruto, PERFIL_POR_DEFECTO))) {
-    const medida = e.porUnidadMedida ? ` (${clp(e.porUnidadMedida.valor)}/${e.porUnidadMedida.base})` : '';
+  // Tramos que existen y no se estan usando, incluidos los que quedaron fuera
+  // del tope: saber que existen es parte de la decision.
+  for (const e of escalasPendientes(
+    informarEscalas(o.oferta, o.cantidad, d.precioUnitarioBruto, PERFIL_POR_DEFECTO),
+  )) {
+    const m = e.porUnidadMedida ? ` (${clp(e.porUnidadMedida.valor)}/${e.porUnidadMedida.base})` : '';
     const candado = e.usable ? '' : '  [necesitas la membresia]';
-    console.log(
-      `     llevando ${e.minUnidades}+ un: ${clp(e.precioUnitario)} c/u${medida}` +
-        `  -${e.ahorroPorcentaje}%${candado}`,
-    );
+    console.log(`     llevando ${e.minUnidades}+ un: ${clp(e.precioUnitario)} c/u${m}  -${e.ahorroPorcentaje}%${candado}`);
   }
 
   if (d.url) console.log(`     ${d.url}`);
@@ -200,12 +204,6 @@ for (const [i, d] of ranking.entries()) {
 
 for (const a of advertencias) console.log(`aviso: ${a}`);
 
-/**
- * Una tabla de una fila no es una comparacion.
- *
- * Distingue las dos causas, que piden acciones distintas: la tienda no esta
- * mapeada en el catalogo, o si lo esta pero hoy no devolvio nada.
- */
 if (canonico) {
   const mapeadas = canonico.equivalencias.map((e) => e.tienda);
   const conDatos = new Set(universo.map((o) => o.tienda));
@@ -214,40 +212,41 @@ if (canonico) {
   const sinMapear = soportadas.filter((t) => !mapeadas.includes(t));
 
   if (sinDatos.length > 0) {
-    console.log(`\naviso: ${sinDatos.join(', ')} esta mapeado pero hoy no devolvio datos.`);
+    console.log(`aviso: ${sinDatos.join(', ')} esta mapeado pero hoy no devolvio datos.`);
   }
   if (sinMapear.length > 0) {
     console.log(`\nEste producto no tiene mapeado: ${sinMapear.join(', ')}.`);
-    console.log('No se esta comparando con esa(s) tienda(s). Para agregarla:');
-    console.log(`   npm run emparejar -- "${canonico.nombre}"`);
+    console.log(`Para agregarla:  npm run emparejar -- "${canonico.nombre}"`);
   }
 }
 
-// Con el catalogo canonico sabemos que es el mismo articulo: el ahorro es real.
 const dudas = canonico ? [] : advertenciasEquivalencia([...porTienda.values()]);
 const [mejor, segunda] = ranking;
 
 if (mejor && segunda) {
-  const ahorro = segunda.totalEfectivo - mejor.totalEfectivo;
-  if (ahorro <= 0) {
-    // Un empate es informacion: hoy da lo mismo donde comprarlo.
-    console.log(`\nEmpate: ${mejor.tienda} y ${segunda.tienda} cuestan lo mismo (${clp(mejor.totalEfectivo)}).`);
+  const costo = (o: typeof mejor) => o.desglose.porUnidadMedida?.valor ?? o.desglose.unitarioEfectivo;
+  const unidad = mejor.desglose.porUnidadMedida?.base ?? 'un';
+  const diferencia = costo(segunda) - costo(mejor);
+
+  if (dudas.length > 0) {
+    console.log(`\nOJO: ${mejor.oferta.tienda} y ${segunda.oferta.tienda} no son el mismo producto:`);
+    for (const d of dudas) console.log(`   - ${d}`);
+    console.log(`Registralo con: npm run emparejar -- "${query}"`);
+  } else if (diferencia <= 0) {
+    console.log(`\nEmpate: ${mejor.oferta.tienda} y ${segunda.oferta.tienda} llegan al mismo precio por ${unidad}.`);
   } else {
-    if (dudas.length === 0) {
-      console.log(`\nComprando en ${mejor.tienda} en vez de ${segunda.tienda} ahorras ${clp(ahorro)} en esta compra.`);
-    } else {
-      // Un ahorro entre productos que no son el mismo no es un ahorro.
-      console.log(`\nOJO: la diferencia de ${clp(ahorro)} entre ${mejor.tienda} y ${segunda.tienda}`);
-      console.log('no es comparable todavia, porque no son el mismo producto:');
-      for (const d of dudas) console.log(`   - ${d}`);
-      console.log(`Registralo con: npm run emparejar -- "${query}"`);
-    }
+    console.log(
+      `\nLo mas barato: ${clp(costo(mejor))}/${unidad} llevando ${mejor.cantidad} un en ${mejor.oferta.tienda}` +
+        ` (total ${clp(mejor.desglose.totalEfectivo)}).`,
+    );
+    console.log(
+      `Lo mejor de ${segunda.oferta.tienda}: ${clp(costo(segunda))}/${unidad} llevando ${segunda.cantidad} un.`,
+    );
   }
 }
-console.log();
 
-// Si algo se boto, se dice. Con --diagnostico se detalla todo.
 if (descartes.total > 0) {
   if (detallar) descartes.imprimir(console.log);
-  else console.log(`(${descartes.total} descarte(s); corre con --diagnostico para verlos)`);
+  else console.log(`\n(${descartes.total} descarte(s); corre con --diagnostico para verlos)`);
 }
+console.log();

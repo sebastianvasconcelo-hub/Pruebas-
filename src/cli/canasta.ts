@@ -28,6 +28,11 @@ function valorFlag(nombre: string): string | undefined {
 }
 
 const fecha = valorFlag('--fecha') ? parsearFechaLocal(valorFlag('--fecha')!) : new Date();
+const maximo = valorFlag('--maximo') ? Number(valorFlag('--maximo')) : undefined;
+if (maximo !== undefined && (!Number.isInteger(maximo) || maximo < 1)) {
+  console.error('--maximo debe ser un entero mayor o igual a 1');
+  process.exit(1);
+}
 if (Number.isNaN(fecha.getTime())) {
   console.error('Fecha invalida. Formato esperado: YYYY-MM-DD');
   process.exit(1);
@@ -72,17 +77,22 @@ for (const producto of catalogo.productos) {
   });
 }
 
-const resumen = evaluarCanasta(entradas, PERFIL_POR_DEFECTO, { fecha }, previo);
+const resumen = evaluarCanasta(entradas, PERFIL_POR_DEFECTO, { fecha }, previo, { maximo });
 
 // Lo que cambio de tienda va primero: es lo unico que exige una decision.
 if (resumen.cambios.length > 0) {
   console.log('CAMBIOS DESDE LA ULTIMA VEZ\n');
   for (const l of resumen.cambios) {
     const g = l.ganador!;
+    const d = g.desglose;
+    const medida = d.porUnidadMedida ? `${clp(d.porUnidadMedida.valor)}/${d.porUnidadMedida.base}` : '';
     console.log(`  ${l.producto.nombre}`);
-    console.log(`     ahora conviene ${g.tienda} (antes ${l.tiendaPrevia}), ${clp(g.totalEfectivo)} por ${l.cantidad} un`);
+    console.log(
+      `     ahora conviene ${g.oferta.tienda} (antes ${l.tiendaPrevia}): ` +
+        `${medida} llevando ${g.cantidad} un, total ${clp(d.totalEfectivo)}`,
+    );
     console.log(`     ${clp(l.ahorroVsSegunda)} mas barato que la alternativa`);
-    if (g.url) console.log(`     ${g.url}`);
+    if (d.url) console.log(`     ${d.url}`);
     console.log();
   }
 } else if (Object.keys(previo).length > 0) {
@@ -96,29 +106,33 @@ for (const l of resumen.lineas) {
     continue;
   }
   const g = l.ganador!;
-  const medida = g.porUnidadMedida ? `${clp(g.porUnidadMedida.valor)}/${g.porUnidadMedida.base}` : '';
+  const d = g.desglose;
+  const medida = d.porUnidadMedida
+    ? `${clp(d.porUnidadMedida.valor)}/${d.porUnidadMedida.base}`
+    : `${clp(d.unitarioEfectivo)}/un`;
   const marca = l.cambioDeTienda ? '*' : ' ';
-  console.log(
-    `  ${marca}  ${l.producto.nombre.slice(0, 44).padEnd(44)} ${g.tienda.padEnd(8)} ` +
-      `${clp(g.totalEfectivo).padStart(9)}  ${medida}`,
-  );
-  if (l.cantidad > 1) console.log(`      ${l.cantidad} un a ${clp(g.precioUnitarioBruto)} c/u (${g.origenPrecio})`);
-  for (const nota of g.notas) console.log(`      - ${nota}`);
 
-  // La oferta original de la tienda ganadora, que conserva sus escalas.
+  // El titular es el mejor precio alcanzable y la cantidad que exige.
+  console.log(
+    `  ${marca}  ${l.producto.nombre.slice(0, 40).padEnd(40)} ${g.oferta.tienda.padEnd(8)} ` +
+      `${medida.padStart(12)}  x${String(g.cantidad).padStart(3)} un  ${clp(d.totalEfectivo).padStart(10)}`,
+  );
+  if (g.exigeLlevarMas) {
+    console.log(`      -${g.ahorroPorcentaje}% respecto de llevar ${l.cantidad} un`);
+  }
+  for (const nota of d.notas) console.log(`      - ${nota}`);
+
   const ofertaGanadora = entradas
     .find((e) => e.producto.id === l.producto.id)
-    ?.ofertas.find((o) => o.tienda === g.tienda);
+    ?.ofertas.find((o) => o.tienda === g.oferta.tienda);
 
   if (ofertaGanadora) {
     for (const e of escalasPendientes(
-      informarEscalas(ofertaGanadora, l.cantidad, g.precioUnitarioBruto, PERFIL_POR_DEFECTO),
+      informarEscalas(ofertaGanadora, g.cantidad, d.precioUnitarioBruto, PERFIL_POR_DEFECTO),
     )) {
-      const medida = e.porUnidadMedida ? ` (${clp(e.porUnidadMedida.valor)}/${e.porUnidadMedida.base})` : '';
+      const m = e.porUnidadMedida ? ` (${clp(e.porUnidadMedida.valor)}/${e.porUnidadMedida.base})` : '';
       const candado = e.usable ? '' : '  [necesitas la membresia]';
-      console.log(
-        `      llevando ${e.minUnidades}+ un: ${clp(e.precioUnitario)} c/u${medida}  -${e.ahorroPorcentaje}%${candado}`,
-      );
+      console.log(`      llevando ${e.minUnidades}+ un: ${clp(e.precioUnitario)} c/u${m}  -${e.ahorroPorcentaje}%${candado}`);
     }
   }
 
@@ -128,7 +142,7 @@ for (const l of resumen.lineas) {
   }
 }
 
-console.log(`\nTOTAL comprando cada cosa donde convenga: ${clp(resumen.totalOptimo)}`);
+console.log(`\nTOTAL comprando la cantidad optima de cada producto donde convenga: ${clp(resumen.totalOptimo)}`);
 for (const t of resumen.totalPorTienda) {
   const cobertura = t.cubre < resumen.lineas.filter((l) => !l.sinDatos).length ? `  (solo ${t.cubre} productos)` : '';
   console.log(`   todo en ${t.tienda.padEnd(10)} ${clp(t.total).padStart(10)}${cobertura}`);

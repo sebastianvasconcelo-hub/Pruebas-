@@ -33,7 +33,7 @@ describe('evaluarCanasta', () => {
 
   it('elige la tienda mas barata y dice cuanto se ahorra', () => {
     const r = evaluarCanasta(entradas, PERFIL_POR_DEFECTO, { fecha: MARTES });
-    expect(r.lineas[0]!.ganador!.tienda).toBe('alvi');
+    expect(r.lineas[0]!.ganador!.oferta.tienda).toBe('alvi');
     expect(r.lineas[0]!.ahorroVsSegunda).toBe(200);
   });
 
@@ -44,7 +44,7 @@ describe('evaluarCanasta', () => {
       { fecha: MARTES },
     );
     expect(r.lineas[0]!.cantidad).toBe(6);
-    expect(r.lineas[0]!.ganador!.totalEfectivo).toBe(6540);
+    expect(r.lineas[0]!.ganador!.desglose.totalEfectivo).toBe(6540);
   });
 
   it('la primera vez no reporta cambio de tienda', () => {
@@ -62,7 +62,7 @@ describe('evaluarCanasta', () => {
     });
     expect(r.cambios).toHaveLength(1);
     expect(r.cambios[0]!.tiendaPrevia).toBe('alvi');
-    expect(r.cambios[0]!.ganador!.tienda).toBe('jumbo');
+    expect(r.cambios[0]!.ganador!.oferta.tienda).toBe('jumbo');
   });
 
   it('no reporta cambio si la ganadora sigue siendo la misma', () => {
@@ -85,7 +85,7 @@ describe('evaluarCanasta', () => {
       PERFIL_POR_DEFECTO,
       { fecha: MARTES },
     );
-    expect(r.lineas[0]!.ganador!.tienda).toBe('jumbo');
+    expect(r.lineas[0]!.ganador!.oferta.tienda).toBe('jumbo');
   });
 });
 
@@ -194,5 +194,56 @@ describe('cobertura por tienda', () => {
     );
     expect(r.lineas[0]!.sinDatos).toBe(true);
     expect(r.lineas[0]!.tiendasSinDatos).toEqual(['alvi', 'jumbo']);
+  });
+});
+
+describe('la canasta resuelve cada linea al mejor precio alcanzable', () => {
+  const conEscalas = (tienda: string, lista: number, tramos: Array<[number, number]>): Oferta => ({
+    ...oferta(tienda, lista),
+    escalas: tramos.map(([min, precio]) => ({ minUnidades: min, precioUnitario: precio })),
+  });
+
+  it('propone la cantidad que consigue el precio mas bajo', () => {
+    const r = evaluarCanasta(
+      [{ producto: producto(), ofertas: [conEscalas('alvi', 1290, [[6, 990], [12, 890]])] }],
+      PERFIL_POR_DEFECTO,
+      { fecha: MARTES },
+    );
+    expect(r.lineas[0]!.ganador!.cantidad).toBe(12);
+    expect(r.lineas[0]!.ganador!.exigeLlevarMas).toBe(true);
+  });
+
+  it('respeta un tope de unidades por producto', () => {
+    const r = evaluarCanasta(
+      [{ producto: producto(), ofertas: [conEscalas('alvi', 1290, [[6, 990], [12, 890]])] }],
+      PERFIL_POR_DEFECTO,
+      { fecha: MARTES },
+      {},
+      { maximo: 6 },
+    );
+    expect(r.lineas[0]!.ganador!.cantidad).toBe(6);
+  });
+
+  it('gana la tienda mas barata llevando volumen, no al detalle', () => {
+    // Jumbo es mas barato por unidad suelta; Alvi gana con su escala.
+    const r = evaluarCanasta(
+      [{
+        producto: producto(),
+        ofertas: [conEscalas('alvi', 1390, [[6, 890]]), oferta('jumbo', 1190)],
+      }],
+      PERFIL_POR_DEFECTO,
+      { fecha: MARTES },
+    );
+    expect(r.lineas[0]!.ganador!.oferta.tienda).toBe('alvi');
+    expect(r.lineas[0]!.ganador!.cantidad).toBe(6);
+  });
+
+  it('el total suma la compra optima de cada producto', () => {
+    const r = evaluarCanasta(
+      [{ producto: producto(), ofertas: [conEscalas('alvi', 1290, [[6, 990]])] }],
+      PERFIL_POR_DEFECTO,
+      { fecha: MARTES },
+    );
+    expect(r.totalOptimo).toBe(5940);
   });
 });
