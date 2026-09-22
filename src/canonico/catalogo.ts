@@ -171,10 +171,12 @@ export function ofertasDe(
     const porNombre = deLaTienda.find((o) => normalizar(o.nombre) === normalizar(eq.nombre));
     if (porNombre) {
       elegidas.push(porNombre);
+      // Mostrar ambos identificadores: comparar el guardado con el recibido es
+      // lo que distingue un slug reescrito de un listado duplicado.
       descartes?.registrar(
         eq.tienda,
         eq.nombre,
-        `calzo por nombre, no por sku "${eq.sku}": el catalogo quedo desactualizado. ` +
+        `calzo por nombre. Guardado: "${eq.sku}" | recibido ahora: "${porNombre.sku}". ` +
           `Repara con: npm run catalogo -- --reparar`,
       );
       continue;

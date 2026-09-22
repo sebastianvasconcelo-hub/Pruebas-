@@ -30,7 +30,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 202 tests, todos offline
+npm test          # 203 tests, todos offline
 ```
 
 ### Comparar
@@ -130,9 +130,20 @@ distintos segun de donde venga el dato. La busqueda de Jumbo publica un
 ItemList de schema.org sin sku, asi que se deriva del slug de la direccion,
 mientras que la ficha entrega su `skuId` numerico.
 
-El nombre es el ultimo recurso, y existe porque **los slugs caducan**: la
-tienda reescribe la direccion de un producto y la equivalencia guardada deja de
-calzar aunque el articulo siga en su catalogo. Se exige igualdad exacta del
+El nombre es el ultimo recurso, y existe porque **el sku guardado deja de
+calzar aunque el articulo siga en el catalogo de la tienda**. Se observo con
+Jumbo apenas cinco minutos despues de emparejar, asi que no es cosa de que el
+dato envejezca. Las causas conocidas:
+
+- **Listados duplicados**: Jumbo publica el mismo producto bajo mas de una
+  direccion, delatadas por sufijos como `-2` al final del slug. Emparejas con
+  uno y la busqueda devuelve el otro.
+- **Consultas distintas dan resultados distintos**: al emparejar se busca con
+  las palabras de la persona y al comparar con el nombre guardado, que no
+  devuelven el mismo conjunto.
+
+Cuando algo calza por nombre, la salida muestra el sku guardado y el recibido,
+que es lo que permite distinguir un caso del otro. Se exige igualdad exacta del
 nombre normalizado, nunca parecido, porque un falso positivo aqui compara
 productos distintos. Cuando algo calza asi, la salida lo dice, porque significa
 que el catalogo quedo desactualizado:

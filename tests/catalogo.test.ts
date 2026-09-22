@@ -18,6 +18,7 @@ import {
   upsert,
 } from '../src/canonico/catalogo.js';
 import { CATALOGO_VACIO, type Catalogo, type ProductoCanonico } from '../src/canonico/tipos.js';
+import { Descartes } from '../src/diagnostico.js';
 import type { Oferta } from '../src/tipos.js';
 
 function oferta(over: Partial<Oferta>): Oferta {
@@ -242,6 +243,14 @@ describe('ofertasDe: el nombre como ultimo recurso', () => {
 
   it('rescata el producto cuya direccion cambio', () => {
     expect(ofertasDe(conSlugCaduco, [hoy])).toHaveLength(1);
+  });
+
+  it('reporta el sku guardado y el recibido, para poder compararlos', () => {
+    const d = new Descartes();
+    ofertasDe(conSlugCaduco, [hoy], d);
+    const porque = d.lista()[0]!.porque;
+    expect(porque).toContain('leche-colun-semi-descremada-1-litro');
+    expect(porque).toContain('leche-colun-semidescremada-1-l');
   });
 
   it('exige nombre exacto: no se conforma con parecido', () => {
