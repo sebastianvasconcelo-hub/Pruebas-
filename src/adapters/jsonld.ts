@@ -1,4 +1,5 @@
 import type { CLP, Oferta } from '../tipos.js';
+import type { Descartes } from '../diagnostico.js';
 import type { TiendaConfig } from './tipos.js';
 
 /**
@@ -85,7 +86,7 @@ function esItemList(b: unknown): b is { itemListElement: ListItemLd[] } {
  *
  * Funcion pura: recibe los bloques ya extraidos, no toca la red.
  */
-export function mapearJsonLd(cfg: TiendaConfig, bloques: unknown[]): Oferta[] {
+export function mapearJsonLd(cfg: TiendaConfig, bloques: unknown[], descartes?: Descartes): Oferta[] {
   const capturadoEn = new Date().toISOString();
   const ofertas: Oferta[] = [];
   const vistos = new Set<string>();
@@ -96,10 +97,16 @@ export function mapearJsonLd(cfg: TiendaConfig, bloques: unknown[]): Oferta[] {
     for (const elemento of bloque.itemListElement) {
       const producto = elemento.item ?? {};
       const nombre = producto.name ?? elemento.name;
-      if (typeof nombre !== 'string' || nombre.trim() === '') continue;
+      if (typeof nombre !== 'string' || nombre.trim() === '') {
+        descartes?.registrar(cfg.id, elemento.url ?? '(sin url)', 'elemento sin nombre');
+        continue;
+      }
 
       const precio = precioDe(producto.offers);
-      if (!precio) continue;
+      if (!precio) {
+        descartes?.registrar(cfg.id, nombre, 'sin precio en offers de schema.org');
+        continue;
+      }
 
       const url = producto.url ?? elemento.url;
       const sku = skuDesdeUrl(url, nombre);

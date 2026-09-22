@@ -1,3 +1,4 @@
+import type { Descartes } from '../diagnostico.js';
 import type { Oferta } from '../tipos.js';
 import {
   extraerFlight,
@@ -26,16 +27,24 @@ const NAVEGADOR = {
 };
 
 /** Mapeo puro: del HTML a ofertas, segun el motor de la tienda. */
-export function mapearHtml(cfg: TiendaConfig, html: string): Oferta[] {
+export function mapearHtml(cfg: TiendaConfig, html: string, descartes?: Descartes): Oferta[] {
   if (cfg.motor === 'nextdata') {
     const datos = extraerNextData(html);
-    return datos ? mapearAlvi(cfg, datos) : [];
+    if (!datos) {
+      descartes?.registrar(cfg.id, cfg.host, 'el HTML no trae bloque __NEXT_DATA__');
+      return [];
+    }
+    return mapearAlvi(cfg, datos, descartes);
   }
   if (cfg.motor === 'jsonld') {
     const flight = extraerFlight(html);
-    if (flight === '') return [];
-    return mapearJsonLd(cfg, extraerJsonIncrustado(flight));
+    if (flight === '') {
+      descartes?.registrar(cfg.id, cfg.host, 'el HTML no trae chunks de App Router');
+      return [];
+    }
+    return mapearJsonLd(cfg, extraerJsonIncrustado(flight), descartes);
   }
+  descartes?.registrar(cfg.id, cfg.host, `motor sin adapter: ${cfg.motor}`);
   return [];
 }
 
@@ -45,30 +54,35 @@ export function mapearHtml(cfg: TiendaConfig, html: string): Oferta[] {
  * La ficha trae mas que la busqueda: en Jumbo, el precio de lista y el precio
  * Prime, que el ItemList de schema.org no distingue.
  */
-export function mapearFicha(cfg: TiendaConfig, html: string): Oferta[] {
+export function mapearFicha(cfg: TiendaConfig, html: string, descartes?: Descartes): Oferta[] {
   if (cfg.motor === 'jsonld') {
     const flight = extraerFlight(html);
-    if (flight === '') return [];
+    if (flight === '') {
+      descartes?.registrar(`${cfg.id}:ficha`, cfg.host, 'el HTML no trae chunks de App Router');
+      return [];
+    }
     const bloques = extraerJsonIncrustado(flight);
-    const desdeFicha = mapearFichaJumbo(cfg, bloques);
+    const desdeFicha = mapearFichaJumbo(cfg, bloques, descartes);
+    if (desdeFicha.length > 0) return desdeFicha;
     // Si la ficha no rindio, al menos queda el schema.org con un precio.
-    return desdeFicha.length > 0 ? desdeFicha : mapearJsonLd(cfg, bloques);
+    descartes?.registrar(`${cfg.id}:ficha`, cfg.host, 'sin item de ficha: uso el schema.org');
+    return mapearJsonLd(cfg, bloques, descartes);
   }
-  return mapearHtml(cfg, html);
+  return mapearHtml(cfg, html, descartes);
 }
 
 /** Trae la ficha de un producto por su URL. */
 export async function leerFicha(
   cfg: TiendaConfig,
   url: string,
-  opts: { timeoutMs?: number } = {},
+  opts: { timeoutMs?: number; descartes?: Descartes } = {},
 ): Promise<Oferta[]> {
   const res = await fetch(url, {
     headers: NAVEGADOR,
     signal: AbortSignal.timeout(opts.timeoutMs ?? 30_000),
   });
   if (!res.ok) throw new Error(`${cfg.id}: HTTP ${res.status} en ${url}`);
-  return mapearFicha(cfg, await res.text());
+  return mapearFicha(cfg, await res.text(), opts.descartes);
 }
 
 export function urlBusqueda(cfg: TiendaConfig, query: string): string | null {
@@ -79,7 +93,7 @@ export function urlBusqueda(cfg: TiendaConfig, query: string): string | null {
 export async function buscarEnSitio(
   cfg: TiendaConfig,
   query: string,
-  opts: { timeoutMs?: number } = {},
+  opts: { timeoutMs?: number; descartes?: Descartes } = {},
 ): Promise<Oferta[]> {
   const url = urlBusqueda(cfg, query);
   if (!url) throw new Error(`${cfg.id}: no hay ruta de busqueda verificada`);
@@ -90,7 +104,7 @@ export async function buscarEnSitio(
   });
   if (!res.ok) throw new Error(`${cfg.id}: HTTP ${res.status} en ${url}`);
 
-  const ofertas = mapearHtml(cfg, await res.text());
+  const ofertas = mapearHtml(cfg, await res.text(), opts.descartes);
   if (ofertas.length === 0) {
     throw new Error(
       `${cfg.id}: la pagina respondio pero no se extrajo ningun producto. ` +

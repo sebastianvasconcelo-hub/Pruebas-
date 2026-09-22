@@ -1,19 +1,46 @@
 import { readFile, writeFile } from 'node:fs/promises';
+import type { Descartes } from '../diagnostico.js';
 import type { Oferta } from '../tipos.js';
 import { normalizar, tokenizar, dice } from './similitud.js';
 import { CATALOGO_VACIO, type Catalogo, type Equivalencia, type ProductoCanonico } from './tipos.js';
 
 export const RUTA_CATALOGO = 'catalogo.json';
 
+/**
+ * Carga el catalogo.
+ *
+ * Que el archivo no exista es normal la primera vez y da un catalogo vacio.
+ * Que exista pero este corrupto NO es lo mismo, y confundirlos seria grave:
+ * el usuario veria "catalogo vacio" y creeria que perdio sus productos, cuando
+ * el archivo esta ahi y solo hace falta repararlo. Por eso se distingue.
+ */
 export async function cargar(ruta = RUTA_CATALOGO): Promise<Catalogo> {
+  let texto: string;
   try {
-    const datos = JSON.parse(await readFile(ruta, 'utf8')) as Catalogo;
-    if (datos.version !== 1 || !Array.isArray(datos.productos)) return { ...CATALOGO_VACIO };
-    return datos;
-  } catch {
-    // Todavia no existe: se empieza vacio en vez de fallar.
-    return { ...CATALOGO_VACIO };
+    texto = await readFile(ruta, 'utf8');
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return { ...CATALOGO_VACIO };
+    throw e;
   }
+
+  let datos: unknown;
+  try {
+    datos = JSON.parse(texto);
+  } catch {
+    throw new Error(
+      `${ruta} existe pero no es JSON valido. No se borro nada: revisa el archivo ` +
+        `o muevelo a un lado para empezar de cero.`,
+    );
+  }
+
+  const catalogo = datos as Catalogo;
+  if (catalogo?.version !== 1 || !Array.isArray(catalogo.productos)) {
+    throw new Error(
+      `${ruta} no tiene el formato esperado (version 1 con una lista de productos). ` +
+        `No se borro nada: revisa el archivo.`,
+    );
+  }
+  return catalogo;
 }
 
 export async function guardar(catalogo: Catalogo, ruta = RUTA_CATALOGO): Promise<void> {
@@ -116,7 +143,11 @@ export function mismaUrl(a: string | undefined, b: string | undefined): boolean 
  * busqueda no se reconocia al leerlo desde la ficha, y como Jumbo no expone EAN
  * la oferta se descartaba en silencio.
  */
-export function ofertasDe(producto: ProductoCanonico, ofertas: Oferta[]): Oferta[] {
+export function ofertasDe(
+  producto: ProductoCanonico,
+  ofertas: Oferta[],
+  descartes?: Descartes,
+): Oferta[] {
   const elegidas: Oferta[] = [];
   for (const eq of producto.equivalencias) {
     const deLaTienda = ofertas.filter((o) => o.tienda === eq.tienda);
@@ -124,7 +155,19 @@ export function ofertasDe(producto: ProductoCanonico, ofertas: Oferta[]): Oferta
       deLaTienda.find((o) => o.sku === eq.sku) ??
       (eq.ean ? deLaTienda.find((o) => o.ean === eq.ean) : undefined) ??
       deLaTienda.find((o) => mismaUrl(o.url, eq.url));
+
     if (elegida) elegidas.push(elegida);
+    else if (deLaTienda.length > 0) {
+      // La tienda respondio pero ninguna de sus ofertas es este producto: el
+      // caso que hacia desaparecer a Jumbo sin dejar rastro.
+      descartes?.registrar(
+        eq.tienda,
+        eq.nombre,
+        `${deLaTienda.length} oferta(s) recibidas, ninguna calza con sku "${eq.sku}", ean ni url`,
+      );
+    } else {
+      descartes?.registrar(eq.tienda, eq.nombre, 'la tienda no devolvio ninguna oferta');
+    }
   }
   return elegidas;
 }

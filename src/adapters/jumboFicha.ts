@@ -1,5 +1,6 @@
 import type { Base, CLP, Contenido, Oferta } from '../tipos.js';
 import { interpretarPromociones, type PromocionJumbo } from './jumboPromos.js';
+import type { Descartes } from '../diagnostico.js';
 import type { TiendaConfig } from './tipos.js';
 
 /**
@@ -89,7 +90,11 @@ function datosLd(bloques: unknown[], sku: string): { marca?: string; url?: strin
 }
 
 /** Mapeo puro de los bloques de una ficha de Jumbo a ofertas. No toca la red. */
-export function mapearFichaJumbo(cfg: TiendaConfig, bloques: unknown[]): Oferta[] {
+export function mapearFichaJumbo(
+  cfg: TiendaConfig,
+  bloques: unknown[],
+  descartes?: Descartes,
+): Oferta[] {
   const capturadoEn = new Date().toISOString();
   const ofertas: Oferta[] = [];
   const vistos = new Set<string>();
@@ -97,7 +102,11 @@ export function mapearFichaJumbo(cfg: TiendaConfig, bloques: unknown[]): Oferta[
   for (const item of bloques.flatMap((b) => recolectarItems(b))) {
     const sku = item.skuId!;
     const nombre = item.name;
-    if (!nombre || vistos.has(sku)) continue;
+    if (!nombre) {
+      descartes?.registrar(`${cfg.id}:ficha`, sku, 'item sin nombre');
+      continue;
+    }
+    if (vistos.has(sku)) continue;
     vistos.add(sku);
 
     const precioVigente = item.price!;

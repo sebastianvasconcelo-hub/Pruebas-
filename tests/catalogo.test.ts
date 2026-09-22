@@ -1,4 +1,4 @@
-import { mkdtemp, readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -127,11 +127,20 @@ describe('cargar y guardar', () => {
     expect((await readFile(ruta, 'utf8')).endsWith('\n')).toBe(true);
   });
 
-  it('ignora un archivo con version desconocida en vez de reventar', async () => {
+  it('falla ruidosamente si el archivo existe pero tiene otro formato', async () => {
+    // Devolver catalogo vacio haria creer que se perdieron los productos,
+    // cuando el archivo esta ahi y solo hay que repararlo.
     const dir = await mkdtemp(join(tmpdir(), 'cat-'));
     const ruta = join(dir, 'catalogo.json');
     await guardar({ version: 99, productos: [] } as unknown as Catalogo, ruta);
-    expect(await cargar(ruta)).toEqual(CATALOGO_VACIO);
+    await expect(cargar(ruta)).rejects.toThrow(/formato esperado/);
+  });
+
+  it('falla ruidosamente si el archivo existe pero no es JSON', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'cat-'));
+    const ruta = join(dir, 'catalogo.json');
+    await writeFile(join(ruta), '{roto');
+    await expect(cargar(ruta)).rejects.toThrow(/no es JSON valido/);
   });
 });
 

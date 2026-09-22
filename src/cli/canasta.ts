@@ -11,6 +11,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { TIENDAS } from '../adapters/index.js';
 import { traerOfertas } from '../canonico/traer.js';
+import { Descartes } from '../diagnostico.js';
 import { evaluarCanasta, historialDe, type EntradaCanasta, type Historial } from '../canasta/evaluar.js';
 import { cargar, ofertasDe } from '../canonico/catalogo.js';
 import { nombreDia, parsearFechaLocal } from '../normalizar/fecha.js';
@@ -33,6 +34,9 @@ if (Number.isNaN(fecha.getTime())) {
 
 const clp = (n: number) => `$${Math.round(n).toLocaleString('es-CL')}`;
 
+const descartes = new Descartes();
+const detallar = args.includes('--diagnostico');
+
 const catalogo = await cargar();
 if (catalogo.productos.length === 0) {
   console.log('\nTu canasta esta vacia. Agrega productos con:\n  npm run emparejar -- "leche colun"\n');
@@ -52,7 +56,7 @@ console.log('Consultando tiendas...\n');
 const entradas: EntradaCanasta[] = [];
 for (const producto of catalogo.productos) {
   const resultados = await Promise.allSettled(
-    producto.equivalencias.map((eq) => traerOfertas(eq)),
+    producto.equivalencias.map((eq) => traerOfertas(eq, descartes)),
   );
 
   const encontradas: Oferta[] = [];
@@ -62,7 +66,7 @@ for (const producto of catalogo.productos) {
   }
   entradas.push({
     producto,
-    ofertas: ofertasDe(producto, encontradas),
+    ofertas: ofertasDe(producto, encontradas, descartes),
     tiendasSoportadas: TIENDAS.filter((t) => t.soportado && t.busqueda).map((t) => t.id),
   });
 }
@@ -112,6 +116,11 @@ for (const t of resumen.totalPorTienda) {
 }
 if (resumen.ahorroRepartiendo > 0) {
   console.log(`\nRepartir la compra te ahorra ${clp(resumen.ahorroRepartiendo)} frente a comprar todo en una sola tienda.`);
+}
+
+if (descartes.total > 0) {
+  if (detallar) descartes.imprimir(console.log);
+  else console.log(`\n(${descartes.total} descarte(s); corre con --diagnostico para verlos)`);
 }
 
 await writeFile(RUTA_HISTORIAL, JSON.stringify(historialDe(resumen), null, 2) + '\n');

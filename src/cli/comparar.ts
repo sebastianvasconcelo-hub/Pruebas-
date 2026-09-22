@@ -11,6 +11,7 @@ import { buscarPorId, buscarPorNombre, cargar, ofertasDe } from '../canonico/cat
 import type { ProductoCanonico } from '../canonico/tipos.js';
 import { buscarEnSitio } from '../adapters/html.js';
 import { traerOfertas } from '../canonico/traer.js';
+import { Descartes } from '../diagnostico.js';
 import { mapearAlvi } from '../adapters/alvi.js';
 import { mapearJsonLd } from '../adapters/jsonld.js';
 import { mapearVtex } from '../adapters/vtex.js';
@@ -53,6 +54,10 @@ if (!Number.isInteger(cantidad) || cantidad < 1) {
 
 const clp = (n: number) => `$${Math.round(n).toLocaleString('es-CL')}`;
 
+// Registro de todo lo que el pipeline bota, para que nada desaparezca callado.
+const descartes = new Descartes();
+const detallar = args.includes('--diagnostico');
+
 async function desdeFixtures(q: string): Promise<Oferta[]> {
   const archivos = (await readdir('fixtures')).filter((f) => f.endsWith('.json'));
   const ofertas: Oferta[] = [];
@@ -89,7 +94,7 @@ async function desdeRed(q: string): Promise<Oferta[]> {
  */
 async function desdeCatalogo(producto: ProductoCanonico): Promise<Oferta[]> {
   const resultados = await Promise.allSettled(
-    producto.equivalencias.map((eq) => traerOfertas(eq)),
+    producto.equivalencias.map((eq) => traerOfertas(eq, descartes)),
   );
 
   const encontradas: Oferta[] = [];
@@ -97,7 +102,7 @@ async function desdeCatalogo(producto: ProductoCanonico): Promise<Oferta[]> {
     if (r.status === 'fulfilled') encontradas.push(...r.value);
     else console.error(`  aviso: ${r.reason instanceof Error ? r.reason.message : r.reason}`);
   }
-  return ofertasDe(producto, encontradas);
+  return ofertasDe(producto, encontradas, descartes);
 }
 
 const catalogo = await cargar();
@@ -219,3 +224,9 @@ if (mejor && segunda) {
   }
 }
 console.log();
+
+// Si algo se boto, se dice. Con --diagnostico se detalla todo.
+if (descartes.total > 0) {
+  if (detallar) descartes.imprimir(console.log);
+  else console.log(`(${descartes.total} descarte(s); corre con --diagnostico para verlos)`);
+}

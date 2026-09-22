@@ -30,7 +30,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 188 tests, todos offline
+npm test          # 196 tests, todos offline
 ```
 
 ### Comparar
@@ -397,6 +397,35 @@ src/
     nextdata.ts            __NEXT_DATA__, chunks de App Router y busqueda de productos
     comparar.ts            compara un producto entre tiendas
 ```
+
+## Nada se descarta en silencio
+
+Un filtro que bota datos sin dejar rastro es peor que una excepcion: no avisa y
+el resultado se ve igual de legitimo. Paso una vez, con una oferta de Jumbo que
+desaparecia por un identificador que no calzaba, y la salida mostraba una sola
+tienda como si fuera una comparacion.
+
+`src/diagnostico.ts` registra lo que cada etapa bota y por que. Los mapeadores
+reciben el registro de forma opcional, asi que sin el se comportan igual que
+antes. Las CLI avisan cuando hubo descartes y los detallan con `--diagnostico`:
+
+```bash
+npm run canasta -- --diagnostico
+npm run comparar -- --producto <id> --diagnostico
+```
+
+```
+DESCARTES (3)
+   jumbo            2x  12 oferta(s) recibidas, ninguna calza con sku "leche-colun-1l", ean ni url
+                        ej: Leche Colun semidescremada 1 L
+   alvi             1x  sin precio utilizable en sellers
+                        ej: Leche descremada Colun 1 L
+```
+
+Caso aparte es el catalogo: que `catalogo.json` no exista es normal la primera
+vez y da un catalogo vacio, pero que exista y este corrupto **no** es lo mismo.
+Confundirlos haria creer que se perdieron los productos cuando el archivo esta
+ahi, asi que eso falla con un mensaje que dice que no se borro nada.
 
 ## Limites conocidos
 

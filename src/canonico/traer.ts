@@ -1,6 +1,7 @@
 import { buscarEnSitio, leerFicha } from '../adapters/html.js';
 import { tienda } from '../adapters/index.js';
 import type { TiendaConfig } from '../adapters/tipos.js';
+import type { Descartes } from '../diagnostico.js';
 import type { Oferta } from '../tipos.js';
 import type { Equivalencia } from './tipos.js';
 
@@ -17,13 +18,20 @@ export function necesitaFicha(cfg: TiendaConfig): boolean {
   return cfg.motor === 'jsonld';
 }
 
-export async function traerOfertas(eq: Equivalencia): Promise<Oferta[]> {
+export async function traerOfertas(eq: Equivalencia, descartes?: Descartes): Promise<Oferta[]> {
   const cfg = tienda(eq.tienda);
-  if (!cfg?.soportado) return [];
+  if (!cfg) {
+    descartes?.registrar(eq.tienda, eq.nombre, 'tienda desconocida en el registro');
+    return [];
+  }
+  if (!cfg.soportado) {
+    descartes?.registrar(eq.tienda, eq.nombre, `tienda no soportada: ${cfg.notas ?? 'sin adapter'}`);
+    return [];
+  }
 
   if (necesitaFicha(cfg) && eq.url) {
     try {
-      const ofertas = await leerFicha(cfg, eq.url);
+      const ofertas = await leerFicha(cfg, eq.url, { descartes });
       if (ofertas.length > 0) return ofertas;
     } catch (e) {
       // La ficha puede mudarse de ruta; la busqueda sigue sirviendo.
@@ -31,6 +39,9 @@ export async function traerOfertas(eq: Equivalencia): Promise<Oferta[]> {
     }
   }
 
-  if (!cfg.busqueda) return [];
-  return buscarEnSitio(cfg, eq.nombre);
+  if (!cfg.busqueda) {
+    descartes?.registrar(eq.tienda, eq.nombre, 'sin ruta de busqueda verificada');
+    return [];
+  }
+  return buscarEnSitio(cfg, eq.nombre, { descartes });
 }

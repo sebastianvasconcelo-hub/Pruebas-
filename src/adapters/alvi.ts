@@ -1,5 +1,6 @@
 import type { Base, CLP, Contenido, Oferta } from '../tipos.js';
 import { parsearContenido } from '../normalizar/unidad.js';
+import type { Descartes } from '../diagnostico.js';
 import type { TiendaConfig } from './tipos.js';
 
 /**
@@ -137,19 +138,25 @@ export function escalasDe(steps: PriceStepAlvi[] | undefined): Oferta['escalas']
 }
 
 /** Mapeo puro del __NEXT_DATA__ de Alvi a ofertas. No toca la red. */
-export function mapearAlvi(cfg: TiendaConfig, json: unknown): Oferta[] {
+export function mapearAlvi(cfg: TiendaConfig, json: unknown, descartes?: Descartes): Oferta[] {
   const capturadoEn = new Date().toISOString();
   const ofertas: Oferta[] = [];
   const vistos = new Set<string>();
 
   for (const p of recolectarProductos(json)) {
     const nombre = p.name ?? p.nameComplete;
-    if (!nombre) continue;
+    if (!nombre) {
+      descartes?.registrar(cfg.id, p.sku ?? p.productId ?? '(sin id)', 'producto sin nombre');
+      continue;
+    }
 
     const seller = elegirSeller(p);
     const precioLista: CLP | undefined =
       seller?.listPrice ?? seller?.priceWithoutDiscount ?? seller?.price;
-    if (typeof precioLista !== 'number' || precioLista <= 0) continue;
+    if (typeof precioLista !== 'number' || precioLista <= 0) {
+      descartes?.registrar(cfg.id, nombre, 'sin precio utilizable en sellers');
+      continue;
+    }
 
     const sku = p.sku ?? p.itemId ?? p.productId ?? nombre;
     // El mismo catalogo viene duplicado en dehydratedState e intelliSearchData.
