@@ -30,7 +30,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 196 tests, todos offline
+npm test          # 202 tests, todos offline
 ```
 
 ### Comparar
@@ -122,13 +122,28 @@ npm run catalogo                 # lo registrado hasta ahora
 ```
 
 Cuando el producto esta en el catalogo, el comparador busca en cada tienda por
-el nombre que esa tienda usa, elige la oferta por SKU, EAN o URL y compara el
-mismo articulo.
+el nombre que esa tienda usa, elige la oferta por SKU, EAN, URL o nombre exacto
+y compara el mismo articulo.
 
 La URL no es redundante: una misma tienda puede entregar identificadores
 distintos segun de donde venga el dato. La busqueda de Jumbo publica un
 ItemList de schema.org sin sku, asi que se deriva del slug de la direccion,
-mientras que la ficha entrega su `skuId` numerico. Ahi el ahorro que
+mientras que la ficha entrega su `skuId` numerico.
+
+El nombre es el ultimo recurso, y existe porque **los slugs caducan**: la
+tienda reescribe la direccion de un producto y la equivalencia guardada deja de
+calzar aunque el articulo siga en su catalogo. Se exige igualdad exacta del
+nombre normalizado, nunca parecido, porque un falso positivo aqui compara
+productos distintos. Cuando algo calza asi, la salida lo dice, porque significa
+que el catalogo quedo desactualizado:
+
+```bash
+npm run catalogo -- --reparar
+```
+
+Vuelve a consultar cada equivalencia y actualiza sku y url cuando el nombre
+coincide exacto. Conserva quien confirmo el emparejamiento y cuando: refrescar
+un identificador caduco no cambia la decision de que son el mismo producto. Ahi el ahorro que
 reporta es real, y por eso deja de mostrar las advertencias de equivalencia.
 
 El `consumoMensual` que declares alimenta el costo de bodega y la decision

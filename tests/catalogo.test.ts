@@ -14,6 +14,7 @@ import {
   idDesdeNombre,
   mismaUrl,
   ofertasDe,
+  refrescar,
   upsert,
 } from '../src/canonico/catalogo.js';
 import { CATALOGO_VACIO, type Catalogo, type ProductoCanonico } from '../src/canonico/tipos.js';
@@ -211,5 +212,83 @@ describe('ofertasDe: identificadores distintos segun el origen', () => {
     const porSku = oferta({ tienda: 'jumbo', sku: 'leche-semidescremada-colun-1-l', nombre: 'por sku' });
     const porUrl = oferta({ tienda: 'jumbo', sku: '10995', url: 'https://www.jumbo.cl/leche-semidescremada-colun-1-l/p', nombre: 'por url' });
     expect(ofertasDe(JUMBO_DESDE_BUSQUEDA, [porUrl, porSku])[0]!.nombre).toBe('por sku');
+  });
+});
+
+describe('ofertasDe: el nombre como ultimo recurso', () => {
+  // Caso real: Jumbo reescribio la direccion del producto y el slug guardado
+  // dejo de calzar, aunque el articulo sigue en su catalogo.
+  const conSlugCaduco: ProductoCanonico = {
+    id: 'leche-colun',
+    nombre: 'Leche Colun semidescremada 1 L',
+    equivalencias: [
+      {
+        tienda: 'jumbo',
+        sku: 'leche-colun-semi-descremada-1-litro',
+        nombre: 'Leche Colun Semidescremada 1 L',
+        url: 'https://www.jumbo.cl/leche-colun-semi-descremada-1-litro/p',
+        origen: 'manual',
+        confirmadoEn: '2026-09-22',
+      },
+    ],
+  };
+
+  const hoy = oferta({
+    tienda: 'jumbo',
+    sku: 'leche-colun-semidescremada-1-l',
+    nombre: 'Leche Colun Semidescremada 1 L',
+    url: 'https://www.jumbo.cl/leche-colun-semidescremada-1-l/p',
+  });
+
+  it('rescata el producto cuya direccion cambio', () => {
+    expect(ofertasDe(conSlugCaduco, [hoy])).toHaveLength(1);
+  });
+
+  it('exige nombre exacto: no se conforma con parecido', () => {
+    const otraLeche = oferta({
+      tienda: 'jumbo',
+      sku: 'x',
+      nombre: 'Leche Colun Descremada 1 L',
+      url: 'https://www.jumbo.cl/x/p',
+    });
+    expect(ofertasDe(conSlugCaduco, [otraLeche])).toEqual([]);
+  });
+
+  it('ignora mayusculas y tildes al comparar el nombre', () => {
+    const conTildes = oferta({
+      tienda: 'jumbo',
+      sku: 'x',
+      nombre: 'LECHE COLÚN SEMIDESCREMADA 1 L',
+      url: 'https://www.jumbo.cl/x/p',
+    });
+    expect(ofertasDe(conSlugCaduco, [conTildes])).toHaveLength(1);
+  });
+});
+
+describe('refrescar', () => {
+  const eq = {
+    tienda: 'jumbo',
+    sku: 'viejo',
+    nombre: 'Leche Colun',
+    url: 'https://www.jumbo.cl/viejo/p',
+    origen: 'manual' as const,
+    confirmadoEn: '2026-09-01',
+  };
+
+  it('actualiza sku, nombre y url con los datos frescos', () => {
+    const nueva = refrescar(eq, oferta({ tienda: 'jumbo', sku: 'nuevo', nombre: 'Leche Colun 1 L', url: 'https://www.jumbo.cl/nuevo/p' }));
+    expect(nueva).toMatchObject({ sku: 'nuevo', nombre: 'Leche Colun 1 L', url: 'https://www.jumbo.cl/nuevo/p' });
+  });
+
+  it('conserva quien confirmo el emparejamiento y cuando', () => {
+    // Refrescar un sku caduco no cambia la decision de que son el mismo producto.
+    const nueva = refrescar(eq, oferta({ tienda: 'jumbo', sku: 'nuevo' }));
+    expect(nueva.origen).toBe('manual');
+    expect(nueva.confirmadoEn).toBe('2026-09-01');
+  });
+
+  it('no pierde el ean guardado si la oferta nueva no lo trae', () => {
+    const nueva = refrescar({ ...eq, ean: '123' }, oferta({ tienda: 'jumbo', sku: 'nuevo', ean: undefined }));
+    expect(nueva.ean).toBe('123');
   });
 });

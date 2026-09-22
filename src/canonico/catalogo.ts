@@ -135,13 +135,18 @@ export function mismaUrl(a: string | undefined, b: string | undefined): boolean 
 /**
  * De todas las ofertas recogidas, las que corresponden a un producto canonico.
  *
- * Se empareja por SKU, EAN o URL, en ese orden. La URL no es redundante: una
- * misma tienda puede entregar identificadores distintos segun de donde venga
- * el dato. En Jumbo, la busqueda publica un ItemList de schema.org sin sku, asi
- * que se deriva del slug de la direccion, mientras que la ficha entrega su
- * `skuId` numerico. Emparejando solo por SKU, un producto registrado desde la
- * busqueda no se reconocia al leerlo desde la ficha, y como Jumbo no expone EAN
- * la oferta se descartaba en silencio.
+ * Se empareja por SKU, EAN, URL y, como ultimo recurso, por nombre exacto.
+ *
+ * Ninguna de las tres primeras llaves es redundante. Una misma tienda entrega
+ * identificadores distintos segun de donde venga el dato: la busqueda de Jumbo
+ * publica un ItemList de schema.org sin sku, que hay que derivar del slug de la
+ * direccion, mientras que su ficha entrega un `skuId` numerico.
+ *
+ * El nombre es el ultimo recurso porque los slugs caducan: la tienda reescribe
+ * la direccion de un producto y la equivalencia guardada deja de calzar aunque
+ * el articulo siga ahi. Se exige igualdad exacta del nombre normalizado, no
+ * parecido, porque un falso positivo aqui compara productos distintos. Cuando
+ * calza asi, se registra: el catalogo esta desactualizado y conviene repararlo.
  */
 export function ofertasDe(
   producto: ProductoCanonico,
@@ -156,14 +161,38 @@ export function ofertasDe(
       (eq.ean ? deLaTienda.find((o) => o.ean === eq.ean) : undefined) ??
       deLaTienda.find((o) => mismaUrl(o.url, eq.url));
 
-    if (elegida) elegidas.push(elegida);
-    else if (deLaTienda.length > 0) {
-      // La tienda respondio pero ninguna de sus ofertas es este producto: el
-      // caso que hacia desaparecer a Jumbo sin dejar rastro.
+    if (elegida) {
+      elegidas.push(elegida);
+      continue;
+    }
+
+    // Ultimo recurso: el mismo nombre, exacto. Rescata el producto cuya
+    // direccion cambio, que de otro modo desapareceria de la comparacion.
+    const porNombre = deLaTienda.find((o) => normalizar(o.nombre) === normalizar(eq.nombre));
+    if (porNombre) {
+      elegidas.push(porNombre);
       descartes?.registrar(
         eq.tienda,
         eq.nombre,
-        `${deLaTienda.length} oferta(s) recibidas, ninguna calza con sku "${eq.sku}", ean ni url`,
+        `calzo por nombre, no por sku "${eq.sku}": el catalogo quedo desactualizado. ` +
+          `Repara con: npm run catalogo -- --reparar`,
+      );
+      continue;
+    }
+
+    if (deLaTienda.length > 0) {
+      // La tienda respondio pero ninguna de sus ofertas es este producto: el
+      // caso que hacia desaparecer a Jumbo sin dejar rastro.
+      const parecidos = deLaTienda
+        .map((o) => o.nombre)
+        .slice(0, 3)
+        .join(' | ');
+      descartes?.registrar(
+        eq.tienda,
+        eq.nombre,
+        `${deLaTienda.length} oferta(s) recibidas, ninguna calza con sku "${eq.sku}"` +
+          `${eq.url ? '' : ' (la equivalencia no tiene url guardada)'}, ean ni nombre. ` +
+          `Recibidas: ${parecidos}`,
       );
     } else {
       descartes?.registrar(eq.tienda, eq.nombre, 'la tienda no devolvio ninguna oferta');
@@ -176,4 +205,21 @@ export function ofertasDe(
 export function borrar(catalogo: Catalogo, id: string): Catalogo | null {
   if (!catalogo.productos.some((p) => p.id === id)) return null;
   return { ...catalogo, productos: catalogo.productos.filter((p) => p.id !== id) };
+}
+
+/**
+ * Actualiza la equivalencia con los datos frescos de una oferta.
+ *
+ * Conserva el origen y la fecha de confirmacion originales: quien decidio que
+ * estos dos productos son el mismo fue la persona, y refrescar un sku caduco no
+ * cambia esa decision.
+ */
+export function refrescar(eq: Equivalencia, oferta: Oferta): Equivalencia {
+  return {
+    ...eq,
+    sku: oferta.sku,
+    ean: oferta.ean ?? eq.ean,
+    nombre: oferta.nombre,
+    url: oferta.url ?? eq.url,
+  };
 }
