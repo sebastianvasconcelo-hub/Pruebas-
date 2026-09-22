@@ -15,6 +15,7 @@ import { Descartes } from '../diagnostico.js';
 import { evaluarCanasta, historialDe, type EntradaCanasta, type Historial } from '../canasta/evaluar.js';
 import { cargar, ofertasDe } from '../canonico/catalogo.js';
 import { nombreDia, parsearFechaLocal } from '../normalizar/fecha.js';
+import { escalasPendientes, informarEscalas } from '../precios/escalas.js';
 import { PERFIL_POR_DEFECTO } from '../precios/reglas.js';
 import type { Oferta } from '../tipos.js';
 
@@ -103,6 +104,24 @@ for (const l of resumen.lineas) {
   );
   if (l.cantidad > 1) console.log(`      ${l.cantidad} un a ${clp(g.precioUnitarioBruto)} c/u (${g.origenPrecio})`);
   for (const nota of g.notas) console.log(`      - ${nota}`);
+
+  // La oferta original de la tienda ganadora, que conserva sus escalas.
+  const ofertaGanadora = entradas
+    .find((e) => e.producto.id === l.producto.id)
+    ?.ofertas.find((o) => o.tienda === g.tienda);
+
+  if (ofertaGanadora) {
+    for (const e of escalasPendientes(
+      informarEscalas(ofertaGanadora, l.cantidad, g.precioUnitarioBruto, PERFIL_POR_DEFECTO),
+    )) {
+      const medida = e.porUnidadMedida ? ` (${clp(e.porUnidadMedida.valor)}/${e.porUnidadMedida.base})` : '';
+      const candado = e.usable ? '' : '  [necesitas la membresia]';
+      console.log(
+        `      llevando ${e.minUnidades}+ un: ${clp(e.precioUnitario)} c/u${medida}  -${e.ahorroPorcentaje}%${candado}`,
+      );
+    }
+  }
+
   if (l.ranking.length < 2) {
     const falta = [...l.tiendasSinMapear, ...l.tiendasSinDatos];
     console.log(`      sin comparacion: falta ${falta.join(', ') || 'otra tienda'}`);

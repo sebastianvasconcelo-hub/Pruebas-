@@ -30,7 +30,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 205 tests, todos offline
+npm test          # 215 tests, todos offline
 ```
 
 ### Comparar
@@ -52,6 +52,22 @@ Con los datos reales de Alvi, el arroz Tucapel G2 1 Kg sale asi:
 
 $2.090 de lista, $1.490 llevando 3 o mas, menos el 7% del jueves: $1.386 por
 kilo. Esa cadena de descuentos es justamente lo que no se ve en la vitrina.
+
+Las escalas que **no** aplican a la cantidad consultada se muestran igual:
+
+```
+>> alvi         $2.090/kg          total $2.090
+     Arroz Tucapel gran seleccion G2 1 Kg
+     unitario $2.090 (lista)
+     llevando 3+ un: $1.490 c/u ($1.490/kg)  -28.7%
+     llevando 10+ un: $1.450 c/u ($1.450/kg)  -30.6%
+```
+
+Una escala mayorista que hoy no se aplica sigue siendo informacion: es lo que
+permite decidir si conviene llevar mas. Ocultarla reduciria la herramienta a
+una calculadora de precio unitario, justo en el caso de uso que mas importa.
+Los tramos que exigen una membresia que no tienes tambien se listan, marcados:
+saber que existe un precio al que no llegas tambien es una decision informada.
 
 **Los tramos de Alvi exigen Club Alvi.** La ficha del producto los publica bajo
 el encabezado "Socio", junto a un "Unete al Club Alvi", y el precio regular

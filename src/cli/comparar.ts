@@ -18,6 +18,7 @@ import { mapearVtex } from '../adapters/vtex.js';
 import { nombreDia, parsearFechaLocal } from '../normalizar/fecha.js';
 import { parsearContenido } from '../normalizar/unidad.js';
 import { comparar } from '../precios/efectivo.js';
+import { escalasPendientes, informarEscalas } from '../precios/escalas.js';
 import { advertenciasEquivalencia } from '../precios/equivalencia.js';
 import { PERFIL_POR_DEFECTO } from '../precios/reglas.js';
 import type { Oferta } from '../tipos.js';
@@ -176,6 +177,19 @@ for (const [i, d] of ranking.entries()) {
       (d.descuentoCashback > 0 ? `  cashback -${clp(d.descuentoCashback)}` : ''),
   );
   for (const nota of d.notas) console.log(`     - ${nota}`);
+
+  // Las escalas que no aplican a esta cantidad siguen siendo informacion: son
+  // las que permiten decidir si conviene llevar mas.
+  const oferta = porTienda.get(d.tienda)!;
+  for (const e of escalasPendientes(informarEscalas(oferta, cantidad, d.precioUnitarioBruto, PERFIL_POR_DEFECTO))) {
+    const medida = e.porUnidadMedida ? ` (${clp(e.porUnidadMedida.valor)}/${e.porUnidadMedida.base})` : '';
+    const candado = e.usable ? '' : '  [necesitas la membresia]';
+    console.log(
+      `     llevando ${e.minUnidades}+ un: ${clp(e.precioUnitario)} c/u${medida}` +
+        `  -${e.ahorroPorcentaje}%${candado}`,
+    );
+  }
+
   if (d.url) console.log(`     ${d.url}`);
   console.log();
 }
