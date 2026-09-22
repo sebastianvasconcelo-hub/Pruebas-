@@ -86,12 +86,23 @@ try {
     nombre = (await rl.question(`Nombre canonico [${nombreSugerido}]: `)).trim() || nombreSugerido;
   }
 
-  const consumoTexto = (await rl.question('Cuantas unidades consumes al mes? (enter para omitir) ')).trim();
+  // Dos cantidades distintas, y confundirlas cambia el resultado: la habitual
+  // decide a que cantidad se compara (y por tanto que escalas aplican); el
+  // consumo mensual solo alimenta el costo de bodega y los meses de stock.
+  const habitualTexto = (
+    await rl.question('Cuantas unidades llevas en CADA compra? [1] ')
+  ).trim();
+  const cantidadHabitual = habitualTexto === '' ? 1 : Number(habitualTexto);
+
+  const consumoTexto = (
+    await rl.question('Cuantas unidades consumes AL MES? (enter para omitir) ')
+  ).trim();
   const consumoMensual = consumoTexto === '' ? undefined : Number(consumoTexto);
 
   let producto: ProductoCanonico = {
     id: idDesdeNombre(nombre),
     nombre,
+    ...(Number.isInteger(cantidadHabitual) && cantidadHabitual > 1 ? { cantidadHabitual } : {}),
     ...(consumoMensual !== undefined && Number.isFinite(consumoMensual) && consumoMensual > 0
       ? { consumoMensual }
       : {}),

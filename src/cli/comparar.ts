@@ -27,7 +27,9 @@ const args = process.argv.slice(2);
 const query = args.find((a) => !a.startsWith('--'));
 const productoPedido = valorFlag('--producto');
 const offline = args.includes('--offline');
-const cantidad = Number(valorFlag('--cantidad') ?? 1);
+// La cantidad explicita manda; si no, la habitual del producto canonico, que
+// se resuelve mas abajo una vez cargado el catalogo.
+const cantidadPedida = valorFlag('--cantidad') ? Number(valorFlag('--cantidad')) : undefined;
 // parsearFechaLocal y no new Date(): "2026-09-25" en UTC cae el dia anterior
 // en Chile, y el cashback depende del dia de la semana.
 const fecha = valorFlag('--fecha') ? parsearFechaLocal(valorFlag('--fecha')!) : new Date();
@@ -48,7 +50,7 @@ if (Number.isNaN(fecha.getTime())) {
   console.error('Fecha invalida. Formato esperado: YYYY-MM-DD');
   process.exit(1);
 }
-if (!Number.isInteger(cantidad) || cantidad < 1) {
+if (cantidadPedida !== undefined && (!Number.isInteger(cantidadPedida) || cantidadPedida < 1)) {
   console.error('--cantidad debe ser un entero mayor o igual a 1');
   process.exit(1);
 }
@@ -121,6 +123,8 @@ if (productoPedido) {
 } else if (query) {
   canonico = buscarPorNombre(catalogo, query)[0];
 }
+
+const cantidad = cantidadPedida ?? canonico?.cantidadHabitual ?? 1;
 
 const todas = canonico && !offline
   ? await desdeCatalogo(canonico)

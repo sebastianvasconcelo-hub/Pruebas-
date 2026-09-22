@@ -2,10 +2,12 @@
  * Muestra el catalogo canonico, lo repara o borra un producto.
  *
  *   npm run catalogo
+ *   npm run catalogo -- --cantidad <id> <n>   unidades por compra
+ *   npm run catalogo -- --consumo <id> <n>    unidades al mes
  *   npm run catalogo -- --reparar
  *   npm run catalogo -- --borrar <id>
  */
-import { borrar, cargar, guardar, refrescar, upsert } from '../canonico/catalogo.js';
+import { borrar, cargar, conCantidades, guardar, refrescar, upsert } from '../canonico/catalogo.js';
 import { traerOfertas } from '../canonico/traer.js';
 import { normalizar } from '../canonico/similitud.js';
 
@@ -14,6 +16,44 @@ const i = args.indexOf('--borrar');
 const aBorrar = i >= 0 ? args[i + 1] : undefined;
 
 let catalogo = await cargar();
+
+/**
+ * Ajuste de cantidades sin tener que volver a emparejar.
+ *
+ * Son dos cosas distintas y confundirlas cambia el resultado: --cantidad es
+ * cuantas unidades llevas en cada compra, y decide a que cantidad se compara y
+ * que escalas mayoristas aplican; --consumo es cuantas gastas al mes, y solo
+ * alimenta el costo de bodega y los meses de stock.
+ */
+for (const [flag, campo] of [
+  ['--cantidad', 'cantidadHabitual'],
+  ['--consumo', 'consumoMensual'],
+] as const) {
+  const j = args.indexOf(flag);
+  if (j < 0) continue;
+
+  const id = args[j + 1];
+  const valor = Number(args[j + 2]);
+  const producto = id ? catalogo.productos.find((p) => p.id === id) : undefined;
+
+  if (!producto) {
+    console.error(`\nUso: npm run catalogo -- ${flag} <id> <numero>`);
+    console.error('Los productos registrados son:');
+    for (const p of catalogo.productos) console.error(`   ${p.id}`);
+    console.error();
+    process.exit(1);
+  }
+
+  try {
+    catalogo = upsert(catalogo, conCantidades(producto, { [campo]: valor }));
+  } catch (e) {
+    console.error(`\n${e instanceof Error ? e.message : e}\n`);
+    process.exit(1);
+  }
+  await guardar(catalogo);
+  console.log(`\n${producto.nombre}: ${campo} = ${valor}\n`);
+  process.exit(0);
+}
 
 if (aBorrar) {
   const resultado = borrar(catalogo, aBorrar);

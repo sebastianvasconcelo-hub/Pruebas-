@@ -30,7 +30,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 215 tests, todos offline
+npm test          # 221 tests, todos offline
 ```
 
 ### Comparar
@@ -173,8 +173,26 @@ coincide exacto. Conserva quien confirmo el emparejamiento y cuando: refrescar
 un identificador caduco no cambia la decision de que son el mismo producto. Ahi el ahorro que
 reporta es real, y por eso deja de mostrar las advertencias de equivalencia.
 
-El `consumoMensual` que declares alimenta el costo de bodega y la decision
-entre comprar semanal o llenar la despensa.
+### Dos cantidades que no son lo mismo
+
+| Campo | Que es | Para que sirve |
+|---|---|---|
+| `cantidadHabitual` | unidades que llevas en **cada compra** | decide a que cantidad se compara, y por tanto que escalas mayoristas aplican |
+| `consumoMensual` | unidades que gastas **al mes** | costo de bodega y meses de stock |
+
+Son independientes: se pueden consumir 24 al mes y llevar 6 por visita.
+Confundirlas cambia el resultado, porque declarar el consumo mensual no hace
+que la comparacion se haga a esa cantidad.
+
+`emparejar` pregunta ambas. Para ajustarlas despues sin volver a emparejar:
+
+```bash
+npm run catalogo -- --cantidad leche-colun 6
+npm run catalogo -- --consumo  leche-colun 24
+```
+
+`npm run comparar --producto <id>` usa la cantidad habitual del producto salvo
+que se pase `--cantidad`.
 
 ### Herramientas de diagnostico (esto lo corres tu)
 

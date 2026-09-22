@@ -225,3 +225,31 @@ export function refrescar(eq: Equivalencia, oferta: Oferta): Equivalencia {
     url: oferta.url ?? eq.url,
   };
 }
+
+/**
+ * Ajusta las cantidades de un producto.
+ *
+ * `cantidadHabitual` es cuantas unidades llevas en CADA compra, y es la que
+ * decide a que cantidad se compara. `consumoMensual` es cuantas gastas al mes,
+ * y solo alimenta el costo de bodega y los meses de stock. Son distintas: se
+ * pueden consumir 24 al mes y llevar 6 por visita.
+ */
+export function conCantidades(
+  producto: ProductoCanonico,
+  cambios: { cantidadHabitual?: number; consumoMensual?: number },
+): ProductoCanonico {
+  const actualizado = { ...producto };
+  if (cambios.cantidadHabitual !== undefined) {
+    if (!Number.isInteger(cambios.cantidadHabitual) || cambios.cantidadHabitual < 1) {
+      throw new Error('cantidadHabitual debe ser un entero mayor o igual a 1');
+    }
+    actualizado.cantidadHabitual = cambios.cantidadHabitual;
+  }
+  if (cambios.consumoMensual !== undefined) {
+    if (!Number.isFinite(cambios.consumoMensual) || cambios.consumoMensual <= 0) {
+      throw new Error('consumoMensual debe ser mayor que 0');
+    }
+    actualizado.consumoMensual = cambios.consumoMensual;
+  }
+  return actualizado;
+}

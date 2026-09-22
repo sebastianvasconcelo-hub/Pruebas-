@@ -8,6 +8,7 @@ import {
   buscarPorNombre,
   buscarPorSku,
   cargar,
+  conCantidades,
   equivalenciaDesdeOferta,
   fijarEquivalencia,
   guardar,
@@ -299,5 +300,38 @@ describe('refrescar', () => {
   it('no pierde el ean guardado si la oferta nueva no lo trae', () => {
     const nueva = refrescar({ ...eq, ean: '123' }, oferta({ tienda: 'jumbo', sku: 'nuevo', ean: undefined }));
     expect(nueva.ean).toBe('123');
+  });
+});
+
+describe('conCantidades', () => {
+  it('fija la cantidad por compra, que es la que decide la comparacion', () => {
+    expect(conCantidades(ARROZ, { cantidadHabitual: 6 }).cantidadHabitual).toBe(6);
+  });
+
+  it('fija el consumo mensual, que es otra cosa', () => {
+    // Se pueden consumir 24 al mes y llevar 6 por visita: son independientes.
+    const p = conCantidades(ARROZ, { cantidadHabitual: 6, consumoMensual: 24 });
+    expect(p.cantidadHabitual).toBe(6);
+    expect(p.consumoMensual).toBe(24);
+  });
+
+  it('cambia solo lo que se le pasa', () => {
+    const conAmbas = conCantidades(ARROZ, { cantidadHabitual: 6, consumoMensual: 24 });
+    expect(conCantidades(conAmbas, { consumoMensual: 12 }).cantidadHabitual).toBe(6);
+  });
+
+  it('rechaza una cantidad por compra que no sea entero positivo', () => {
+    expect(() => conCantidades(ARROZ, { cantidadHabitual: 0 })).toThrow();
+    expect(() => conCantidades(ARROZ, { cantidadHabitual: 1.5 })).toThrow();
+  });
+
+  it('rechaza un consumo mensual no positivo', () => {
+    expect(() => conCantidades(ARROZ, { consumoMensual: 0 })).toThrow();
+    expect(() => conCantidades(ARROZ, { consumoMensual: Number.NaN })).toThrow();
+  });
+
+  it('no muta el producto original', () => {
+    conCantidades(ARROZ, { cantidadHabitual: 6 });
+    expect(ARROZ.cantidadHabitual).toBeUndefined();
   });
 });
