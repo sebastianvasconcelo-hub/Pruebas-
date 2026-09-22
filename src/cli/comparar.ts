@@ -211,7 +211,10 @@ const [mejor, segunda] = ranking;
 
 if (mejor && segunda) {
   const ahorro = segunda.totalEfectivo - mejor.totalEfectivo;
-  if (ahorro > 0) {
+  if (ahorro <= 0) {
+    // Un empate es informacion: hoy da lo mismo donde comprarlo.
+    console.log(`\nEmpate: ${mejor.tienda} y ${segunda.tienda} cuestan lo mismo (${clp(mejor.totalEfectivo)}).`);
+  } else {
     if (dudas.length === 0) {
       console.log(`\nComprando en ${mejor.tienda} en vez de ${segunda.tienda} ahorras ${clp(ahorro)} en esta compra.`);
     } else {

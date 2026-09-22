@@ -30,7 +30,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 203 tests, todos offline
+npm test          # 205 tests, todos offline
 ```
 
 ### Comparar

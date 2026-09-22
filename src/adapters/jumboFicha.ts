@@ -71,22 +71,35 @@ function contenidoDe(item: ItemJumbo): Contenido | undefined {
   return { cantidad, base, envases: 1, origen: `${cantidad} ${unidad}` };
 }
 
-/** Datos de schema.org de la misma ficha, que aportan marca y url. */
-function datosLd(bloques: unknown[], sku: string): { marca?: string; url?: string } {
-  for (const b of bloques) {
-    if (!b || typeof b !== 'object' || Array.isArray(b)) continue;
-    const o = b as Record<string, unknown>;
-    if (o['@type'] !== 'Product' || o.sku !== sku) continue;
-    const brand = o.brand;
-    const marca =
-      typeof brand === 'string'
-        ? brand
-        : brand && typeof brand === 'object' && typeof (brand as { name?: unknown }).name === 'string'
-          ? ((brand as { name: string }).name)
-          : undefined;
-    return { marca, url: typeof o.url === 'string' ? o.url : undefined };
+function marcaDe(brand: unknown): string | undefined {
+  if (typeof brand === 'string') return brand;
+  if (brand && typeof brand === 'object') {
+    const nombre = (brand as { name?: unknown }).name;
+    if (typeof nombre === 'string') return nombre;
   }
-  return {};
+  return undefined;
+}
+
+/**
+ * Datos de schema.org de la misma ficha, que aportan marca y url.
+ *
+ * Se prefiere el bloque cuyo sku coincide, pero si ninguno coincide se usa el
+ * unico Product de la pagina: una ficha describe un producto, y el sku del
+ * schema.org no siempre es el mismo identificador que el del objeto interno.
+ * Quedarse sin url por esa discrepancia dejaria al usuario sin el enlace para
+ * ir a comprar, que es la mitad de la utilidad.
+ */
+function datosLd(bloques: unknown[], sku: string): { marca?: string; url?: string } {
+  const productos = bloques.filter(
+    (b): b is Record<string, unknown> =>
+      !!b && typeof b === 'object' && !Array.isArray(b) && (b as Record<string, unknown>)['@type'] === 'Product',
+  );
+  const elegido = productos.find((o) => o.sku === sku) ?? (productos.length === 1 ? productos[0] : undefined);
+  if (!elegido) return {};
+  return {
+    marca: marcaDe(elegido.brand),
+    url: typeof elegido.url === 'string' ? elegido.url : undefined,
+  };
 }
 
 /** Mapeo puro de los bloques de una ficha de Jumbo a ofertas. No toca la red. */

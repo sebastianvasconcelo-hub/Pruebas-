@@ -73,3 +73,35 @@ describe('el precio efectivo reproduce lo que muestra la ficha', () => {
     expect(oferta!.ppumTienda).toBe('$11.780 x kg');
   });
 });
+
+describe('la url de la ficha siempre debe llegar', () => {
+  it('usa el unico Product de la pagina aunque su sku no coincida', () => {
+    // El schema.org de la ficha y el objeto interno no siempre usan el mismo
+    // identificador; quedarse sin enlace por eso deja la recomendacion coja.
+    const bloques = [
+      {
+        '@type': 'Product',
+        name: 'Queso Mantecoso Quilque 500 g',
+        sku: 'OTRO-ID',
+        brand: { name: 'Quilque' },
+        url: 'https://www.jumbo.cl/queso/p',
+        offers: { price: 5890 },
+      },
+      [null, null, null, { children: [null, null, null, { product: { items: [
+        { skuId: '10995', name: 'Queso Mantecoso Quilque 500 g', price: 5890, listPrice: 6990, stock: true },
+      ] } }] }],
+    ];
+    const [oferta] = mapearFichaJumbo(JUMBO, bloques);
+    expect(oferta!.url).toBe('https://www.jumbo.cl/queso/p');
+    expect(oferta!.marca).toBe('Quilque');
+  });
+
+  it('no adivina cuando hay varios Product y ninguno calza', () => {
+    const bloques = [
+      { '@type': 'Product', sku: 'A', url: 'https://www.jumbo.cl/a/p', name: 'A' },
+      { '@type': 'Product', sku: 'B', url: 'https://www.jumbo.cl/b/p', name: 'B' },
+      [{ product: { items: [{ skuId: 'C', name: 'C', price: 100, stock: true }] } }],
+    ];
+    expect(mapearFichaJumbo(JUMBO, bloques)[0]!.url).toBeUndefined();
+  });
+});
