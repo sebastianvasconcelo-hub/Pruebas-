@@ -12,12 +12,14 @@ export interface TiendaConfig {
   /** Ruta de busqueda del sitio, con {q} donde va el termino. Verificada a mano. */
   busqueda?: string;
   /**
-   * La ficha de producto exige estado de sesion (tienda o metodo de entrega
-   * elegidos) y responde 404 al cargarla en frio. El enlace sigue siendo
-   * correcto navegando dentro del sitio, pero conviene ofrecer ademas uno de
-   * busqueda, que si funciona sin sesion.
+   * Ruta de la ficha de producto, con {slug} donde va el identificador.
+   *
+   * No se puede dar por sentada: Alvi sigue publicando en su catalogo el
+   * `detailUrl` con la convencion de VTEX (`/<slug>/p`) aunque su storefront
+   * actual sirva las fichas en `/product/<slug>`, asi que el dato de la tienda
+   * apunta a una ruta que ella misma abandono.
    */
-  fichaRequiereSesion?: boolean;
+  rutaFicha?: string;
   /** false = todavia no implementado; la CLI lo salta con un aviso. */
   soportado: boolean;
   notas?: string;

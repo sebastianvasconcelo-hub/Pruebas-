@@ -89,6 +89,28 @@ function contenidoDe(p: ProductoAlvi): Contenido | undefined {
   return undefined;
 }
 
+/**
+ * URL real de la ficha a partir del `detailUrl` del catalogo.
+ *
+ * Alvi publica `detailUrl` con la convencion de VTEX ("/<slug>/p") pero su
+ * storefront sirve las fichas en "/product/<slug>", asi que copiar el campo tal
+ * cual produce un enlace que responde 404. Se extrae el slug y se arma la ruta
+ * que la tienda usa hoy, declarada en su configuracion.
+ */
+export function urlFicha(cfg: TiendaConfig, detailUrl: string | undefined): string | undefined {
+  if (!detailUrl) return undefined;
+
+  // Por segmentos y no por recortes de texto: "/p" a secas no tiene slug, y
+  // quitarle el sufijo dejaria la cadena vacia sin que nadie lo note.
+  const segmentos = detailUrl.split('/').filter((t) => t !== '');
+  if (segmentos.at(-1) === 'p') segmentos.pop();
+  const slug = segmentos.at(-1);
+  if (!slug) return undefined;
+
+  const ruta = cfg.rutaFicha ? cfg.rutaFicha.replace('{slug}', slug) : `/${slug}/p`;
+  return `https://${cfg.host}${ruta}`;
+}
+
 /** El seller con stock, o el primero. Alvi hoy trae uno solo. */
 function elegirSeller(p: ProductoAlvi): SellerAlvi | undefined {
   const sellers = p.sellers ?? [];
@@ -176,7 +198,7 @@ export function mapearAlvi(cfg: TiendaConfig, json: unknown, descartes?: Descart
       nombre,
       marca: p.brand,
       ean: p.ean && p.ean !== '' ? p.ean : undefined,
-      url: p.detailUrl ? `https://${cfg.host}${p.detailUrl}` : undefined,
+      url: urlFicha(cfg, p.detailUrl),
       precioLista,
       precioSocio,
       escalas: escalasDe(p.priceSteps),

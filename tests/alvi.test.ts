@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { escalasDe, mapearAlvi } from '../src/adapters/alvi.js';
+import { escalasDe, mapearAlvi, urlFicha } from '../src/adapters/alvi.js';
 import { tienda } from '../src/adapters/index.js';
 import { precioEfectivo } from '../src/precios/efectivo.js';
 import { PERFIL_POR_DEFECTO } from '../src/precios/reglas.js';
 
 const ALVI = tienda('alvi')!;
+const JUMBO_CFG = tienda('jumbo')!;
 // Recorte real de alvi.cl, no sintetico: es el contrato que debemos respetar.
 const REAL = JSON.parse(readFileSync('fixtures/alvi-arroz.real.json', 'utf8'));
 const MARTES = new Date('2026-09-22T12:00:00');
@@ -24,7 +25,7 @@ describe('mapearAlvi sobre datos reales', () => {
       marca: 'Tucapel',
       ean: '7801420220138',
       disponible: true,
-      url: 'https://www.alvi.cl/arroz-tucapel-gran-seleccion-g2-1-kg/p',
+      url: 'https://www.alvi.cl/product/arroz-tucapel-gran-seleccion-g2-1-kg',
     });
   });
 
@@ -117,5 +118,27 @@ describe('las escalas de Alvi exigen ser socio', () => {
   it('no avisa nada cuando la cantidad no alcanza ningun tramo', () => {
     const d = precioEfectivo(oferta!, 1, SIN_CLUB, { fecha: MARTES });
     expect(d.notas.join(' ')).not.toContain('no eres socio');
+  });
+});
+
+describe('la url de la ficha usa la ruta que el sitio sirve hoy', () => {
+  it('convierte el detailUrl de VTEX en la ruta actual de Alvi', () => {
+    // Alvi publica "/<slug>/p" pero su storefront sirve "/product/<slug>".
+    const [oferta] = mapearAlvi(ALVI, REAL);
+    expect(oferta!.url).toBe('https://www.alvi.cl/product/arroz-tucapel-gran-seleccion-g2-1-kg');
+  });
+
+  it('tolera un detailUrl sin la barra inicial o sin el sufijo /p', () => {
+    expect(urlFicha(ALVI, 'arroz-tucapel/p')).toBe('https://www.alvi.cl/product/arroz-tucapel');
+    expect(urlFicha(ALVI, '/arroz-tucapel')).toBe('https://www.alvi.cl/product/arroz-tucapel');
+  });
+
+  it('respeta la ruta de cada tienda: Jumbo si usa /<slug>/p', () => {
+    expect(urlFicha(JUMBO_CFG, '/leche-colun/p')).toBe('https://www.jumbo.cl/leche-colun/p');
+  });
+
+  it('no inventa una url sin detailUrl', () => {
+    expect(urlFicha(ALVI, undefined)).toBeUndefined();
+    expect(urlFicha(ALVI, '/p')).toBeUndefined();
   });
 });

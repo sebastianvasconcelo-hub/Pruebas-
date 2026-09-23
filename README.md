@@ -30,7 +30,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 241 tests, todos offline
+npm test          # 243 tests, todos offline
 ```
 
 ### Comparar
@@ -69,13 +69,15 @@ una calculadora de precio unitario, justo en el caso de uso que mas importa.
 Los tramos que exigen una membresia que no tienes tambien se listan, marcados:
 saber que existe un precio al que no llegas tambien es una decision informada.
 
-**La ficha de Alvi no abre en frio.** Su pagina de producto responde 404 si no
-hay tienda o metodo de entrega elegidos: el enlace es correcto y funciona
-navegando dentro del sitio, pero pegado en una pestana nueva falla. Es la misma
-razon por la que `leerFicha` contra Alvi devolvia 404, y por la que su catalogo
-se lee desde la busqueda, que si responde sin sesion. Las tiendas con esa
-particularidad se marcan `fichaRequiereSesion` y la salida agrega un enlace de
-busqueda que siempre abre.
+**El `detailUrl` de Alvi apunta a una ruta que su propio sitio abandono.** Lo
+publica con la convencion de VTEX (`/<slug>/p`) mientras su storefront sirve
+las fichas en `/product/<slug>`, asi que copiar el campo tal cual produce un
+enlace que responde 404. Esa es la causa del 404 que aparecio al pedir la ficha
+desde el codigo, que en su momento se atribuyo primero a una ruta inexistente y
+despues a una supuesta exigencia de sesion: ninguna de las dos era.
+
+Por eso la ruta de ficha es parte de la configuracion de cada tienda
+(`rutaFicha`) y no un supuesto del adapter, y la url se arma desde el slug.
 
 **Los tramos de Alvi exigen Club Alvi.** La ficha del producto los publica bajo
 el encabezado "Socio", junto a un "Unete al Club Alvi", y el precio regular

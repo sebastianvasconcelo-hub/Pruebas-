@@ -9,6 +9,7 @@ export const TIENDAS: TiendaConfig[] = [
     // App Router: el catalogo solo aparece como JSON-LD de schema.org.
     motor: 'jsonld',
     busqueda: '/busqueda?ft={q}',
+    rutaFicha: '/{slug}/p',
     soportado: true,
     notas: 'Solo un precio por producto: schema.org no distingue Prime de precio normal.',
   },
@@ -19,9 +20,9 @@ export const TIENDAS: TiendaConfig[] = [
     // Pages Router: props completas en __NEXT_DATA__, con priceSteps.
     motor: 'nextdata',
     busqueda: '/search?q={q}',
+    // Su detailUrl dice "/<slug>/p" pero el sitio sirve "/product/<slug>".
+    rutaFicha: '/product/{slug}',
     soportado: true,
-    // La ficha responde 404 en frio: exige tienda o metodo de entrega elegidos.
-    fichaRequiereSesion: true,
     notas: 'Mayorista: trae priceSteps estructurados, ean y unitMultiplier.',
   },
   {
