@@ -1,0 +1,302 @@
+/*
+ * Estilos de la PWA. Pensada para usarse con una mano en el supermercado:
+ * el precio y la cantidad son lo primero que se lee, lo demas va debajo.
+ */
+
+:root {
+  --fondo: #f6f5f1;
+  --superficie: #ffffff;
+  --superficie-2: #efede7;
+  --borde: #e2dfd6;
+  --texto: #1c1d20;
+  --texto-2: #5d5f66;
+  --texto-3: #8a8c93;
+  --acento: #1f6f5c;
+
+  --baja: #1a7f4b;
+  --baja-fondo: #e3f3ea;
+  --alza: #b3412e;
+  --alza-fondo: #f8e7e3;
+  --tramos: #2459a8;
+  --tramos-fondo: #e5edf8;
+  --tienda-cambio: #7a3fa0;
+  --tienda-cambio-fondo: #f1e8f7;
+  --alerta: #8a5a00;
+  --alerta-fondo: #fbefd5;
+
+  --alvi: #123f8c;
+  --alvi-fondo: #e3ebf8;
+  --jumbo: #0f7a3a;
+  --jumbo-fondo: #e1f2e7;
+
+  --radio: 16px;
+  --sombra: 0 1px 2px rgb(0 0 0 / 0.04), 0 2px 8px rgb(0 0 0 / 0.04);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fondo: #16171a;
+    --superficie: #1f2024;
+    --superficie-2: #292a2f;
+    --borde: #33353b;
+    --texto: #eeeef0;
+    --texto-2: #a9abb2;
+    --texto-3: #7d8088;
+    --acento: #5cc2a4;
+
+    --baja: #5fd08f;
+    --baja-fondo: #16301f;
+    --alza: #f08a76;
+    --alza-fondo: #3a1d18;
+    --tramos: #86aef0;
+    --tramos-fondo: #18263d;
+    --tienda-cambio: #c79be6;
+    --tienda-cambio-fondo: #2c1f37;
+    --alerta: #f0c265;
+    --alerta-fondo: #36290f;
+
+    --alvi: #9dbcf2;
+    --alvi-fondo: #1a2740;
+    --jumbo: #7fd6a0;
+    --jumbo-fondo: #15301f;
+
+    --sombra: none;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--texto);
+  font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  padding: 0 max(16px, env(safe-area-inset-right)) calc(32px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+
+main, .barra { max-width: 640px; margin: 0 auto; }
+
+h1, h2, h3, p { margin: 0; }
+
+/* ---------------------------------------------------------------- cabecera */
+
+.barra {
+  padding-top: calc(16px + env(safe-area-inset-top));
+  padding-bottom: 8px;
+}
+.barra-fila { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
+.dia { color: var(--texto-2); font-size: 15px; }
+.actualizado {
+  color: var(--texto-3);
+  font-size: 13px;
+  margin-top: 2px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.separador { color: var(--texto-3); }
+
+#avisos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+#avisos:empty { display: none; }
+.aviso {
+  flex-basis: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--superficie-2);
+  color: var(--texto-2);
+  font-size: 14px;
+}
+.aviso-viejo { background: var(--alerta-fondo); color: var(--alerta); font-weight: 600; }
+.pastilla {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--baja-fondo);
+  color: var(--baja);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------------- secciones */
+
+section { margin-top: 24px; }
+section > h2, .canasta-cabeza h2 {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--texto-2);
+  margin-bottom: 10px;
+}
+ul { list-style: none; margin: 0; padding: 0; }
+
+/* ---------------------------------------------------------------- novedades */
+
+.cambios { display: grid; gap: 8px; }
+.cambio {
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radio);
+  background: var(--superficie);
+  box-shadow: var(--sombra);
+  border-left: 4px solid var(--borde);
+}
+.cambio-icono {
+  flex: none;
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 15px;
+}
+.cambio-baja { border-left-color: var(--baja); }
+.cambio-baja .cambio-icono { background: var(--baja-fondo); color: var(--baja); }
+.cambio-alza { border-left-color: var(--alza); }
+.cambio-alza .cambio-icono { background: var(--alza-fondo); color: var(--alza); }
+.cambio-tramos { border-left-color: var(--tramos); }
+.cambio-tramos .cambio-icono { background: var(--tramos-fondo); color: var(--tramos); }
+.cambio-tienda { border-left-color: var(--tienda-cambio); }
+.cambio-tienda .cambio-icono { background: var(--tienda-cambio-fondo); color: var(--tienda-cambio); }
+.cambio-verificar { border-left-color: var(--alerta); }
+.cambio-cuerpo { min-width: 0; flex: 1; }
+.cambio-producto { font-weight: 600; font-size: 15px; }
+.cambio-lineas { margin-top: 6px; display: grid; gap: 6px; }
+.cambio-linea { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.cambio-linea .tienda { font-size: 11px; padding: 2px 7px; }
+.cambio-linea .tienda { flex: none; }
+.cambio-texto { flex: 1; min-width: 0; color: var(--texto-2); font-size: 14px; font-variant-numeric: tabular-nums; }
+.cambio-marca { flex-basis: 100%; font-size: 12px; font-weight: 600; color: var(--baja); }
+.cambio-marca-alerta { color: var(--alerta); }
+
+/* ---------------------------------------------------------------- canasta */
+
+.canasta-cabeza { display: grid; gap: 10px; margin-bottom: 12px; }
+.canasta-cabeza h2 { margin: 0; }
+.filtro {
+  width: 100%;
+  font: inherit;
+  font-size: 16px; /* 16px o mas: iOS no hace zoom al enfocar */
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--borde);
+  background: var(--superficie);
+  color: var(--texto);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.filtro:focus { outline: 2px solid var(--acento); outline-offset: 1px; }
+
+.productos { display: grid; gap: 12px; }
+
+.producto {
+  padding: 16px;
+  border-radius: var(--radio);
+  background: var(--superficie);
+  box-shadow: var(--sombra);
+  border: 1px solid var(--borde);
+}
+.producto[hidden] { display: none; }
+.producto-cabeza { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.producto-nombre { font-size: 16px; font-weight: 600; line-height: 1.3; }
+
+.tienda {
+  flex: none;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: var(--superficie-2);
+  color: var(--texto-2);
+}
+.tienda-alvi { background: var(--alvi-fondo); color: var(--alvi); }
+.tienda-jumbo { background: var(--jumbo-fondo); color: var(--jumbo); }
+
+.precio { margin-top: 10px; line-height: 1; }
+.precio-valor {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.precio-unidad { font-size: 17px; font-weight: 600; color: var(--texto-2); margin-left: 2px; }
+
+.cantidad { margin-top: 6px; color: var(--texto-2); font-size: 15px; font-variant-numeric: tabular-nums; }
+.cantidad strong { color: var(--texto); }
+.gondola { margin-top: 4px; color: var(--texto-3); font-size: 13px; font-variant-numeric: tabular-nums; }
+.ahorro { margin-top: 4px; color: var(--baja); font-size: 14px; font-weight: 600; }
+.antes { margin-top: 4px; color: var(--tienda-cambio); font-size: 14px; font-weight: 600; }
+
+.escalas, .alternativas {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--borde);
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.escala { color: var(--texto-2); }
+.escala strong { color: var(--texto); }
+.escala-bloqueada { color: var(--texto-3); }
+.escala-candado { color: var(--alerta); }
+
+.alternativa { display: flex; align-items: center; gap: 10px; color: var(--texto-2); }
+.alternativa-precio { font-weight: 600; color: var(--texto); }
+.alternativa-cantidad { margin-left: auto; color: var(--texto-3); }
+
+.faltan { margin-top: 10px; font-size: 13px; color: var(--alerta); }
+
+.producto-pie { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 14px; }
+.ver {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: var(--superficie-2);
+  color: var(--acento);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.ver::after { content: " ↗"; }
+
+.calculo { font-size: 13px; color: var(--texto-3); }
+.calculo summary { cursor: pointer; }
+.calculo ul { margin-top: 6px; display: grid; gap: 3px; }
+
+.producto-sin-datos { opacity: 0.75; }
+.sin-datos { margin-top: 6px; color: var(--texto-3); font-size: 14px; }
+
+/* ---------------------------------------------------------------- totales */
+
+.totales {
+  padding: 18px 16px;
+  border-radius: var(--radio);
+  background: var(--superficie);
+  box-shadow: var(--sombra);
+  border: 1px solid var(--borde);
+}
+.total-valor { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.total-nota { color: var(--texto-3); font-size: 13px; margin-top: 2px; }
+.total-tiendas { margin-top: 14px; display: grid; gap: 8px; font-size: 15px; }
+.total-tiendas li { display: flex; flex-wrap: wrap; gap: 4px 10px; color: var(--texto-2); }
+.total-tienda-valor { margin-left: auto; font-weight: 600; color: var(--texto); font-variant-numeric: tabular-nums; }
+.total-cobertura { flex-basis: 100%; font-size: 12px; color: var(--alerta); }
+.total-ahorro { margin-top: 12px; font-weight: 600; color: var(--baja); }
+
+/* ---------------------------------------------------------------- problemas */
+
+.problemas { margin-top: 24px; font-size: 13px; color: var(--texto-3); }
+.problemas summary { cursor: pointer; }
+.problemas ul { margin-top: 8px; display: grid; gap: 6px; word-break: break-word; }
+
+/* ---------------------------------------------------------------- estados */
+
+.vacio { margin-top: 64px; text-align: center; color: var(--texto-2); }
+.vacio-titulo { font-size: 18px; font-weight: 600; color: var(--texto); margin-bottom: 6px; }
+
+@media (min-width: 700px) {
+  .productos { grid-template-columns: 1fr 1fr; }
+}

@@ -19,10 +19,16 @@
     "emparejar": "tsx src/cli/emparejar.ts",
     "catalogo": "tsx src/cli/catalogo.ts",
     "canasta": "tsx src/cli/canasta.ts",
-    "nube": "tsx src/cli/nube.ts"
+    "nube": "tsx src/cli/nube.ts",
+    "web:build": "node scripts/construir-web.mjs",
+    "web:ejemplo": "tsx scripts/datos-ejemplo.ts",
+    "publicar": "tsx src/cli/publicar.ts",
+    "desplegar": "node scripts/desplegar.mjs",
+    "diario": "npm run web:build && npm run publicar && npm run desplegar"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "esbuild": "^0.24.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"

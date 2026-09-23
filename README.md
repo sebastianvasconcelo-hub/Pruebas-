@@ -30,7 +30,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 275 tests, todos offline
+npm test          # 284 tests, todos offline
 ```
 
 ### Comparar
@@ -501,6 +501,12 @@ cambia sola.
 ## Estructura
 
 ```
+web/                       la PWA: html, estilos, renderer, service worker, iconos
+scripts/
+  construir-web.mjs        arma la PWA en dist-web/
+  desplegar.mjs            la publica en Cloudflare Pages
+  datos-ejemplo.ts         datos.json de ejemplo, sin tocar las tiendas
+  windows/                 tarea diaria y su instalador
 src/
   tipos.ts                 Oferta, Escala, Contenido
   adapters/
@@ -521,16 +527,123 @@ src/
     nube.ts                etapa 0: prueba las rutas de produccion desde otra red
     catalogo.ts            muestra el catalogo canonico
     canasta.ts             la compra completa: donde conviene cada producto hoy
+    publicar.ts            corre la canasta y escribe datos.json
   canasta/
+    correr.ts              una corrida completa: la comparten la terminal y la PWA
     evaluar.ts             recorre la canasta y detecta cambios de tienda
+    historial.ts           historial de precios de gondola por producto y tienda
   canonico/
     tipos.ts               producto canonico y equivalencias por tienda
     similitud.ts           puntaje de parecido; EAN es prueba, el resto indicio
     catalogo.ts            carga, busqueda y actualizacion de catalogo.json
+  publicar/
+    vista.ts               datos.json: la canasta ya resuelta para la PWA
   descubrir/
     nextdata.ts            __NEXT_DATA__, chunks de App Router y busqueda de productos
     comparar.ts            compara un producto entre tiendas
 ```
+
+## La PWA: tu canasta en el iPhone
+
+```
+Tu PC, 1 vez al dia (Programador de tareas de Windows)
+   npm run diario
+     1. arma la PWA                    (web:build)
+     2. corre la canasta               (publicar -> dist-web/datos.json)
+     3. la publica en Cloudflare Pages (desplegar)
+
+Tu iPhone: la PWA instalada en la pantalla de inicio lee datos.json
+```
+
+El scraping corre en el PC porque Alvi bloquea las IPs de datacenter (ver
+Etapa 0 mas abajo), y no puede correr en el telefono porque el navegador no
+deja leer el HTML de otras tiendas.
+
+**La PWA no calcula nada.** Todo lo que muestra sale de `datos.json`, que arma
+`src/publicar/vista.ts` a partir de la misma corrida que usa `npm run canasta`
+(`src/canasta/correr.ts`). Si la PWA hiciera sus propias cuentas habria dos
+versiones de la logica, y tarde o temprano dirian cosas distintas.
+
+**Los datos no pasan por git.** El repo es publico: un `datos.json` commiteado
+dejaria la lista de compras y su historial a la vista de cualquiera. El PC los
+publica directo en Cloudflare. Por la misma razon `catalogo.json` e
+`historial.json` estan en `.gitignore`; respaldalos por tu cuenta, por ejemplo
+en OneDrive.
+
+Otras decisiones:
+
+- **Sin conexion:** el service worker guarda la ultima canasta. En el
+  supermercado sin senal se ve igual, con la fecha en que se actualizo.
+- **Datos viejos:** si pasan mas de 30 horas sin publicar, la app lo dice en
+  grande. Una recomendacion de hace tres dias puede ya no ser cierta.
+- **Precio de gondola:** cuando el cashback aplica, cada producto muestra
+  tambien el precio del estante, porque es el numero que se ve en el pasillo.
+- **Sin internet en el PC:** si ningun producto trae datos, `publicar` se niega.
+  Publicar una canasta vacia borraria la buena del telefono.
+- **Seguridad:** los nombres de productos vienen de sitios de terceros y nunca
+  se insertan como HTML; solo se aceptan enlaces https. El sitio se sirve con
+  una Content-Security-Policy que no permite scripts externos.
+
+Para ver la PWA con datos de ejemplo, sin tocar las tiendas:
+
+```bash
+npm run web:build && npm run web:ejemplo
+npx serve dist-web        # o cualquier servidor estatico, y abrir en el navegador
+```
+
+### Publicar la PWA: configuracion (una sola vez)
+
+1. **Crea una cuenta gratis en Cloudflare** (dash.cloudflare.com).
+
+2. **Copia tu Account ID.** En el panel: *Workers & Pages*, columna derecha.
+
+3. **Crea un token.** *My Profile -> API Tokens -> Create Token -> Custom token*,
+   con el permiso *Account -> Cloudflare Pages -> Edit*. Copialo: se muestra una
+   sola vez.
+
+4. **Guarda las variables en Windows.** En PowerShell, reemplazando los valores:
+
+   ```powershell
+   [Environment]::SetEnvironmentVariable('CLOUDFLARE_API_TOKEN', 'tu-token', 'User')
+   [Environment]::SetEnvironmentVariable('CLOUDFLARE_ACCOUNT_ID', 'tu-account-id', 'User')
+   [Environment]::SetEnvironmentVariable('CANASTA_PROYECTO', 'mi-canasta-x7k2', 'User')
+   ```
+
+   Cierra y vuelve a abrir la terminal para que las tome.
+
+   `CANASTA_PROYECTO` define la direccion: `https://mi-canasta-x7k2.pages.dev`.
+   **Esa direccion es publica**; un nombre dificil de adivinar evita visitas
+   casuales pero no es una proteccion real. Si quieres que pida un codigo por
+   correo antes de abrir, Cloudflare Access lo hace gratis.
+
+5. **Crea el proyecto:**
+
+   ```bash
+   npx wrangler@4.136.3 pages project create mi-canasta-x7k2 --production-branch main
+   ```
+
+6. **Primera publicacion, a mano:**
+
+   ```bash
+   npm install
+   npm run diario
+   ```
+
+   Al terminar muestra la direccion.
+
+7. **Programa la tarea diaria**, en PowerShell desde la carpeta del proyecto:
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts\windows\instalar-tarea.ps1
+   ```
+
+   Corre todos los dias a las 07:00 (`-Hora 06:30` para cambiarla). Si a esa
+   hora el PC esta apagado, corre apenas lo prendas; si falla, reintenta dos
+   veces. Cada ejecucion deja un log en `logs/`.
+
+8. **Instala la app en el iPhone:** abre la direccion en **Safari**, toca
+   *Compartir* y luego *Agregar a inicio*. Tiene que ser Safari: en iOS es el
+   unico que instala PWAs.
 
 ## Etapa 0 de la PWA: ¿funciona el scraping desde la nube?
 

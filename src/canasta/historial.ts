@@ -1,3 +1,4 @@
+import { parsearContenido } from '../normalizar/unidad.js';
 import type { Optimo } from '../precios/optimo.js';
 import type { Base, CLP } from '../tipos.js';
 
@@ -22,7 +23,12 @@ export interface RegistroPrecio {
   /** YYYY-MM-DD. Un registro por producto, tienda y dia. */
   fecha: string;
   tienda: string;
-  /** Mejor precio unitario alcanzable ese dia. */
+  /**
+   * Mejor precio unitario de gondola alcanzable ese dia: con membresia y
+   * escalas, pero SIN cashback ni costos propios. El cashback depende del dia
+   * de la semana y no de la tienda; si entrara aqui, cada jueves todo
+   * "bajaria 7%" y cada viernes todo "subiria", tapando las ofertas reales.
+   */
   unitario: CLP;
   /** El mismo, por unidad de medida, cuando se pudo normalizar. */
   porMedida?: CLP;
@@ -185,19 +191,37 @@ export function fechaISO(fecha: Date): string {
  * Registro del dia a partir del optimo calculado para una tienda.
  *
  * Guarda el precio alcanzable y la cantidad que lo exige, no el de una unidad:
- * es el numero con el que se decide, y por tanto el que hay que poder comparar
- * con el de la semana pasada.
+ * es el numero con el que se decide. Pero lo guarda como precio de gondola,
+ * antes del cashback y de los costos de bodega y financiamiento, porque esos
+ * dependen del dia y del perfil, no de la tienda. El historial registra lo que
+ * hace la tienda; lo que te cuesta a ti se calcula cada vez.
  */
 export function registroDesde(optimo: Optimo, fecha: Date): RegistroPrecio {
   const d = optimo.desglose;
+  const gondola = d.precioUnitarioBruto;
+  const contenido = optimo.oferta.contenido ?? parsearContenido(optimo.oferta.nombre);
+  const porMedida =
+    contenido && contenido.cantidad > 0 ? Math.round((gondola / contenido.cantidad) * 100) / 100 : undefined;
+
   return {
     fecha: fechaISO(fecha),
     tienda: optimo.oferta.tienda,
-    unitario: d.unitarioEfectivo,
-    ...(d.porUnidadMedida ? { porMedida: d.porUnidadMedida.valor, base: d.porUnidadMedida.base } : {}),
+    unitario: gondola,
+    ...(porMedida !== undefined && contenido ? { porMedida, base: contenido.base } : {}),
     cantidad: optimo.cantidad,
     lista: optimo.oferta.precioLista,
     sku: optimo.oferta.sku,
     tramos: optimo.oferta.escalas.map((e) => ({ min: e.minUnidades, precio: e.precioUnitario })),
   };
+}
+
+/**
+ * Registros previos minimos para afirmar que un precio es "el mas bajo
+ * registrado". Con uno o dos, cualquier baja lo es, y el aviso no dice nada.
+ */
+export const MIN_REGISTROS_PARA_MINIMO = 3;
+
+/** true si el precio de hoy bate un minimo con historia suficiente para que importe. */
+export function esMinimoRelevante(minimo: MinimoHistorico | undefined, hoy: CLP): boolean {
+  return minimo !== undefined && minimo.registros >= MIN_REGISTROS_PARA_MINIMO && hoy < minimo.valor;
 }

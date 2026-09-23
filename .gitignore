@@ -8,3 +8,10 @@ fixtures/*.json
 fixtures/*.html
 !fixtures/*.sintetico.json
 !fixtures/*.real.json
+
+# PWA: salida del build y logs de la tarea diaria
+dist-web/
+logs/
+
+# Datos personales: el repo es publico. Respaldalos por tu cuenta.
+catalogo.json

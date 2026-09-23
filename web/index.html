@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es-CL">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mi canasta</title>
+  <meta name="description" content="Donde y cuanto comprar de tu canasta habitual, comparando Alvi y Jumbo con tus reglas de compra.">
+
+  <!-- iPhone: pantalla completa al instalarla con "Agregar a inicio". -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Canasta">
+  <link rel="apple-touch-icon" href="iconos/icono-180.png">
+
+  <meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#16171a" media="(prefers-color-scheme: dark)">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="iconos/icono-192.png">
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <header class="barra">
+    <div class="barra-fila">
+      <h1>Mi canasta</h1>
+      <span id="dia" class="dia"></span>
+    </div>
+    <p id="actualizado" class="actualizado">Cargando…</p>
+    <div id="avisos"></div>
+  </header>
+
+  <main id="contenido" aria-live="polite"></main>
+
+  <noscript><p class="vacio">Esta app necesita JavaScript.</p></noscript>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
