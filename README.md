@@ -30,7 +30,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 270 tests, todos offline
+npm test          # 275 tests, todos offline
 ```
 
 ### Comparar
@@ -518,6 +518,7 @@ src/
     nextdata.ts            extrae productos del HTML de storefronts Next.js
     inspeccionar.ts        analiza un archivo ya descargado, sin red
     emparejar.ts           registra un producto canonico, preguntando lo que no puede probar
+    nube.ts                etapa 0: prueba las rutas de produccion desde otra red
     catalogo.ts            muestra el catalogo canonico
     canasta.ts             la compra completa: donde conviene cada producto hoy
   canasta/
@@ -530,6 +531,38 @@ src/
     nextdata.ts            __NEXT_DATA__, chunks de App Router y busqueda de productos
     comparar.ts            compara un producto entre tiendas
 ```
+
+## Etapa 0 de la PWA: ¿funciona el scraping desde la nube?
+
+Una PWA no puede hacer el scraping en el navegador: CORS le impide leer el HTML
+de otras tiendas. Tiene que correr en un servidor, y los sitios con proteccion
+suelen tratar distinto a las IPs de datacenter.
+
+`npm run nube` ejecuta las rutas de produccion con el mismo parseo que usa la
+app y reporta IP de salida, status, cabeceras y el texto del rechazo. El
+workflow `.github/workflows/nube.yml` lo corre en GitHub Actions.
+
+Resultado, 2026-09-23, tres corridas desde tres IPs distintas de Microsoft
+(Estados Unidos):
+
+| Ruta | Desde la nube |
+|---|---|
+| Jumbo busqueda | funciona (3 de 3) |
+| Jumbo ficha, con precio Prime | funciona |
+| Alvi portada y busqueda | **bloqueado** (3 de 3) |
+
+Alvi responde `Access Denied` de **Akamai** (`errors.edgesuite.net`) tambien en
+la portada, en menos de 300 ms. Es un rechazo a la IP en el borde, no a una
+ruta ni a unas cabeceras: no se arregla cambiando la peticion.
+
+**Conclusion:** el scraping de Alvi, la tienda principal, no puede correr en
+GitHub Actions. Tiene que correr desde una IP residencial.
+
+Las corridas destaparon ademas dos errores en la ficha de Jumbo que los tests no
+veian, porque el fixture tenia una forma distinta a la real: la pagina incrusta
+decenas de productos relacionados con la misma forma que el principal, y su
+JSON-LD llega dentro de un arreglo. Ambos estan corregidos y el fixture tiene
+ahora la forma observada.
 
 ## Nada se descarta en silencio
 
