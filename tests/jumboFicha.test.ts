@@ -145,3 +145,31 @@ describe('una ficha con productos relacionados', () => {
     expect(conUrl.map((o) => o.sku)).toEqual(['P1']);
   });
 });
+
+describe('el JSON-LD de la ficha viene dentro de un arreglo', () => {
+  // Forma observada en jumbo.cl: [Product, BreadcrumbList] como un solo bloque.
+  // El fixture anterior lo tenia aplanado y los tests pasaban contra una forma
+  // que el sitio no usa.
+  const item = { skuId: '10995', name: 'Queso Mantecoso Quilque 500 g', price: 5890, listPrice: 6990, stock: true };
+
+  it('encuentra el Product dentro del arreglo', () => {
+    const bloques = [
+      [
+        { '@type': 'Product', sku: '10995', name: 'Queso Mantecoso Quilque 500 g', brand: { name: 'Quilque' }, url: 'https://www.jumbo.cl/queso/p' },
+        { '@type': 'BreadcrumbList', itemListElement: [] },
+      ],
+      [{ product: { items: [item] } }],
+    ];
+    const [oferta] = mapearFichaJumbo(JUMBO, bloques);
+    expect(oferta!.url).toBe('https://www.jumbo.cl/queso/p');
+    expect(oferta!.marca).toBe('Quilque');
+  });
+
+  it('tambien dentro de @graph', () => {
+    const bloques = [
+      { '@context': 'https://schema.org', '@graph': [{ '@type': 'Product', sku: '10995', url: 'https://www.jumbo.cl/queso/p' }] },
+      [{ product: { items: [item] } }],
+    ];
+    expect(mapearFichaJumbo(JUMBO, bloques)[0]!.url).toBe('https://www.jumbo.cl/queso/p');
+  });
+});

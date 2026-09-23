@@ -91,6 +91,24 @@ function normalizarNombre(t: string): string {
 }
 
 /**
+ * Los bloques Product de schema.org, donde sea que vengan.
+ *
+ * En la ficha real de Jumbo el JSON-LD llega como arreglo, [Product,
+ * BreadcrumbList], no como objeto suelto; otros sitios lo envuelven en
+ * `@graph`. Se recorren arreglos y @graph, pero no las propiedades de
+ * cualquier objeto: el arbol RSC es enorme y los items de producto no se
+ * declaran como Product.
+ */
+function productosLd(nodo: unknown, prof = 0): Record<string, unknown>[] {
+  if (prof > 6 || !nodo || typeof nodo !== 'object') return [];
+  if (Array.isArray(nodo)) return nodo.flatMap((n) => productosLd(n, prof + 1));
+  const o = nodo as Record<string, unknown>;
+  if (o['@type'] === 'Product') return [o];
+  if (Array.isArray(o['@graph'])) return productosLd(o['@graph'], prof + 1);
+  return [];
+}
+
+/**
  * Datos de schema.org de la misma ficha, que aportan marca y url.
  *
  * El bloque Product describe UN producto: el principal de la pagina. Pero la
@@ -106,10 +124,7 @@ function datosLd(
   nombre: string,
   unicoItem: boolean,
 ): { marca?: string; url?: string } {
-  const productos = bloques.filter(
-    (b): b is Record<string, unknown> =>
-      !!b && typeof b === 'object' && !Array.isArray(b) && (b as Record<string, unknown>)['@type'] === 'Product',
-  );
+  const productos = productosLd(bloques);
   const elegido =
     productos.find((o) => o.sku === sku) ??
     productos.find((o) => typeof o.name === 'string' && normalizarNombre(o.name) === normalizarNombre(nombre)) ??

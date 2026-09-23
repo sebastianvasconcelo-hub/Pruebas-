@@ -1,19 +1,36 @@
 [
-  {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    "name": "Queso Mantecoso Quilque Envasado Laminado 500 g",
-    "sku": "10995",
-    "brand": { "@type": "Brand", "name": "Quilque" },
-    "url": "https://www.jumbo.cl/quesomantecoso-quilque-28laminasenvaseresellablealvacio500grs-2/p",
-    "offers": {
-      "@type": "Offer",
-      "priceCurrency": "CLP",
-      "price": 5890,
-      "availability": "https://schema.org/InStock",
-      "itemCondition": "https://schema.org/NewCondition"
+  [
+    {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      "name": "Queso Mantecoso Quilque Envasado Laminado 500 g",
+      "sku": "10995",
+      "brand": {
+        "@type": "Brand",
+        "name": "Quilque"
+      },
+      "url": "https://www.jumbo.cl/quesomantecoso-quilque-28laminasenvaseresellablealvacio500grs-2/p",
+      "offers": {
+        "@type": "Offer",
+        "priceCurrency": "CLP",
+        "price": 5890,
+        "availability": "https://schema.org/InStock",
+        "itemCondition": "https://schema.org/NewCondition"
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "item": "https://www.jumbo.cl/",
+          "name": "Inicio"
+        }
+      ]
     }
-  },
+  ],
   [
     null,
     null,
