@@ -11,7 +11,7 @@
  */
 import { readdir, readFile } from 'node:fs/promises';
 import { TIENDAS, tienda } from '../adapters/index.js';
-import { buscarEnSitio } from '../adapters/html.js';
+import { buscarEnSitio, urlRespaldo } from '../adapters/html.js';
 import { mapearAlvi } from '../adapters/alvi.js';
 import { mapearJsonLd } from '../adapters/jsonld.js';
 import { mapearVtex } from '../adapters/vtex.js';
@@ -199,6 +199,9 @@ for (const [i, o] of ranking.entries()) {
   }
 
   if (d.url) console.log(`     ${d.url}`);
+  // La ficha de algunas tiendas no abre sin sesion: dejar una via que si sirve.
+  const respaldo = urlRespaldo(tienda(o.oferta.tienda)!, o.oferta.nombre);
+  if (respaldo) console.log(`     si la ficha da 404, busca aqui: ${respaldo}`);
   console.log();
 }
 

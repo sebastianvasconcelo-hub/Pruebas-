@@ -90,6 +90,18 @@ export function urlBusqueda(cfg: TiendaConfig, query: string): string | null {
   return `https://${cfg.host}${cfg.busqueda.replace('{q}', encodeURIComponent(query))}`;
 }
 
+/**
+ * Enlace alternativo para llegar al producto cuando su ficha no abre en frio.
+ *
+ * Alvi responde 404 a la ficha si no hay tienda o metodo de entrega elegidos,
+ * asi que el enlace directo, aun siendo correcto, no sirve para abrirlo desde
+ * fuera. La busqueda si responde sin sesion.
+ */
+export function urlRespaldo(cfg: TiendaConfig, nombreProducto: string): string | null {
+  if (!cfg.fichaRequiereSesion) return null;
+  return urlBusqueda(cfg, nombreProducto);
+}
+
 export async function buscarEnSitio(
   cfg: TiendaConfig,
   query: string,

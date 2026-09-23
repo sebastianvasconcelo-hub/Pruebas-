@@ -20,6 +20,8 @@ export const TIENDAS: TiendaConfig[] = [
     motor: 'nextdata',
     busqueda: '/search?q={q}',
     soportado: true,
+    // La ficha responde 404 en frio: exige tienda o metodo de entrega elegidos.
+    fichaRequiereSesion: true,
     notas: 'Mayorista: trae priceSteps estructurados, ean y unitMultiplier.',
   },
   {

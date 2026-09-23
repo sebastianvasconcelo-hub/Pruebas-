@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { mapearVtex, urlBusqueda } from '../src/adapters/vtex.js';
 import type { TiendaConfig } from '../src/adapters/tipos.js';
+import { urlRespaldo } from '../src/adapters/html.js';
+import { tienda as tiendaReal } from '../src/adapters/index.js';
 
 /**
  * Tienda VTEX generica. Ninguna cadena chilena usa hoy el catalogo clasico,
@@ -78,3 +80,18 @@ describe('mapearVtex', () => {
     expect(mapearVtex(ALVI, [{ items: [{ itemId: '1', sellers: [] }] }])).toEqual([]);
   });
 });
+
+describe('enlace de respaldo cuando la ficha no abre en frio', () => {
+  it('ofrece la busqueda para las tiendas que exigen sesion', () => {
+    // Alvi responde 404 a la ficha sin tienda ni metodo de entrega elegidos.
+    const alvi = tiendaReal('alvi')!;
+    expect(alvi.fichaRequiereSesion).toBe(true);
+    expect(urlRespaldo(alvi, 'Leche Colun 1 L')).toBe(
+      'https://www.alvi.cl/search?q=Leche%20Colun%201%20L',
+    );
+  });
+
+  it('no ofrece respaldo donde la ficha abre normalmente', () => {
+    expect(urlRespaldo(tiendaReal('jumbo')!, 'Leche Colun 1 L')).toBeNull();
+  });
+})

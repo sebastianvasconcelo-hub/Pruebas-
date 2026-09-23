@@ -30,7 +30,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 239 tests, todos offline
+npm test          # 241 tests, todos offline
 ```
 
 ### Comparar
@@ -68,6 +68,14 @@ permite decidir si conviene llevar mas. Ocultarla reduciria la herramienta a
 una calculadora de precio unitario, justo en el caso de uso que mas importa.
 Los tramos que exigen una membresia que no tienes tambien se listan, marcados:
 saber que existe un precio al que no llegas tambien es una decision informada.
+
+**La ficha de Alvi no abre en frio.** Su pagina de producto responde 404 si no
+hay tienda o metodo de entrega elegidos: el enlace es correcto y funciona
+navegando dentro del sitio, pero pegado en una pestana nueva falla. Es la misma
+razon por la que `leerFicha` contra Alvi devolvia 404, y por la que su catalogo
+se lee desde la busqueda, que si responde sin sesion. Las tiendas con esa
+particularidad se marcan `fichaRequiereSesion` y la salida agrega un enlace de
+busqueda que siempre abre.
 
 **Los tramos de Alvi exigen Club Alvi.** La ficha del producto los publica bajo
 el encabezado "Socio", junto a un "Unete al Club Alvi", y el precio regular

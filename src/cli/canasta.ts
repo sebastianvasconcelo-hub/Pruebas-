@@ -9,7 +9,8 @@
  * ofertas eventuales que de otro modo se pasan por alto.
  */
 import { readFile, writeFile } from 'node:fs/promises';
-import { TIENDAS } from '../adapters/index.js';
+import { TIENDAS, tienda } from '../adapters/index.js';
+import { urlRespaldo } from '../adapters/html.js';
 import { traerOfertas } from '../canonico/traer.js';
 import { Descartes } from '../diagnostico.js';
 import { evaluarCanasta, historialDe, type EntradaCanasta, type Historial } from '../canasta/evaluar.js';
@@ -93,6 +94,8 @@ if (resumen.cambios.length > 0) {
     );
     console.log(`     ${clp(l.ahorroVsSegunda)} mas barato que la alternativa`);
     if (d.url) console.log(`     ${d.url}`);
+    const respaldo = urlRespaldo(tienda(g.oferta.tienda)!, g.oferta.nombre);
+    if (respaldo) console.log(`     si la ficha da 404, busca aqui: ${respaldo}`);
     console.log();
   }
 } else if (Object.keys(previo).length > 0) {

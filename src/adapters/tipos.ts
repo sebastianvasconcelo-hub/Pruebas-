@@ -11,6 +11,13 @@ export interface TiendaConfig {
   salesChannel?: string;
   /** Ruta de busqueda del sitio, con {q} donde va el termino. Verificada a mano. */
   busqueda?: string;
+  /**
+   * La ficha de producto exige estado de sesion (tienda o metodo de entrega
+   * elegidos) y responde 404 al cargarla en frio. El enlace sigue siendo
+   * correcto navegando dentro del sitio, pero conviene ofrecer ademas uno de
+   * busqueda, que si funciona sin sesion.
+   */
+  fichaRequiereSesion?: boolean;
   /** false = todavia no implementado; la CLI lo salta con un aviso. */
   soportado: boolean;
   notas?: string;
