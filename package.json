@@ -18,7 +18,8 @@
     "inspeccionar": "tsx src/cli/inspeccionar.ts",
     "emparejar": "tsx src/cli/emparejar.ts",
     "catalogo": "tsx src/cli/catalogo.ts",
-    "canasta": "tsx src/cli/canasta.ts"
+    "canasta": "tsx src/cli/canasta.ts",
+    "nube": "tsx src/cli/nube.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

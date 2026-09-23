@@ -3,6 +3,7 @@ dist/
 .env
 *.log
 historial.json
+resultado-nube.json
 fixtures/*.json
 fixtures/*.html
 !fixtures/*.sintetico.json

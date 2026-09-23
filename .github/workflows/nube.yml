@@ -1,0 +1,41 @@
+# Etapa 0 de la PWA: ¿responden Alvi y Jumbo desde una IP de datacenter?
+#
+# Corre las mismas rutas y el mismo parseo que usa la app. Si pasa, el job
+# diario puede vivir en la nube; si no, tiene que correr en un PC con IP
+# residencial y subir los datos. El resultado queda en el resumen del run.
+name: Etapa 0 - scraping desde la nube
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/nube.yml'
+      - 'src/cli/nube.ts'
+
+permissions:
+  contents: read
+
+jobs:
+  nube:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Probar Alvi y Jumbo desde la nube
+        run: npm run nube
+
+      - name: Guardar el resultado
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultado-nube
+          path: resultado-nube.json
+          if-no-files-found: ignore

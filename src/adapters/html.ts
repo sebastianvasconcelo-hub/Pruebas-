@@ -19,7 +19,7 @@ import type { TiendaConfig } from './tipos.js';
  */
 
 /** Cabeceras de navegador: el HTML que sirven depende de que parezca uno. */
-const NAVEGADOR = {
+export const NAVEGADOR = {
   'user-agent':
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36',
   accept: 'text/html,application/xhtml+xml',
