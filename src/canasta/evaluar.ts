@@ -66,7 +66,12 @@ export interface OpcionesCanasta {
   maximo?: number;
 }
 
-/** Historial: en que tienda convenia cada producto la vez anterior. */
+/**
+ * En que tienda convenia cada producto la vez anterior.
+ *
+ * Se deriva del historial de precios, que es la fuente: aqui solo entra el
+ * dato ya resuelto para no duplicar la logica de lectura.
+ */
 export type Historial = Record<string, string>;
 
 export function evaluarCanasta(
@@ -158,11 +163,4 @@ export function evaluarCanasta(
     ahorroRepartiendo: mejorUnica > 0 ? mejorUnica - totalOptimo : 0,
     cambios: lineas.filter((l) => l.cambioDeTienda),
   };
-}
-
-/** Donde conviene cada producto ahora, para guardar como historial. */
-export function historialDe(resumen: ResumenCanasta): Historial {
-  const h: Historial = {};
-  for (const l of resumen.lineas) if (l.ganador) h[l.producto.id] = l.ganador.oferta.tienda;
-  return h;
 }

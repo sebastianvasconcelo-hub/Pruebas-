@@ -30,7 +30,7 @@ testeado, y todo lo que depende de la red esta aislado en dos comandos**.
 
 ```bash
 npm install
-npm test          # 243 tests, todos offline
+npm test          # 270 tests, todos offline
 ```
 
 ### Comparar
@@ -140,7 +140,36 @@ Tambien calcula lo que cuesta repartir la compra frente a hacerla toda en una
 sola tienda, contando solo las tiendas que cubren la canasta entera: un total
 bajo con media cobertura no es comparable.
 
-El historial queda en `historial.json`.
+### Historial de precios
+
+`historial.json` guarda, por producto canonico y tienda, el mejor precio
+alcanzable de cada dia, la cantidad que lo exigia, los tramos vigentes y **con
+que identidad se tomo**. Con eso la canasta reporta lo que el seguimiento por
+tienda ganadora no veia: un producto puede seguir conviniendo en la misma
+cadena y haber bajado, o haber estrenado un tramo mayorista.
+
+```
+CAMBIOS DE PRECIO
+
+  Leche Colun semidescremada 1 L  (alvi)
+     bajo 15.5%: $1.290/L el 2026-09-22 -> $1.090/L hoy
+     tramo nuevo: desde 3 un a $1.140 c/u
+     tramo nuevo: desde 12 un a $1.090 c/u
+     es el mas bajo registrado (antes $1.290 el 2026-09-22, 2 registros)
+```
+
+Se guarda contra el id canonico, que es nuestro y estable, y no contra la url o
+el sku de la tienda, que cambian. Una direccion reescrita afecta a encontrar el
+producto hoy, no a compararlo con el de ayer.
+
+Y cada registro anota el sku con el que se tomo el precio, porque hay dos cosas
+que se ven iguales en los numeros y significan lo contrario: que el precio bajo,
+o que estamos mirando otro articulo. Si la variacion coincide con un cambio de
+identidad, se marca **VERIFICAR** en vez de anunciarse como oferta.
+
+Un registro por producto, tienda y dia: correr la canasta dos veces el mismo dia
+reemplaza el registro en vez de inflar la serie. El archivo se acota a los
+ultimos 120 registros por producto.
 
 Cuando un producto aparece con una sola tienda, la salida lo dice y distingue
 las dos causas, porque piden acciones distintas: la tienda **no esta mapeada**

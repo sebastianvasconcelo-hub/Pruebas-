@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluarCanasta, historialDe, type EntradaCanasta } from '../src/canasta/evaluar.js';
+import { evaluarCanasta, type EntradaCanasta } from '../src/canasta/evaluar.js';
 import { PERFIL_POR_DEFECTO } from '../src/precios/reglas.js';
 import type { ProductoCanonico } from '../src/canonico/tipos.js';
 import type { Oferta } from '../src/tipos.js';
@@ -119,22 +119,6 @@ describe('totales de la canasta', () => {
     const r = evaluarCanasta(parcial, PERFIL_POR_DEFECTO, { fecha: MARTES });
     // Jumbo solo cubre 1 de 2: su total no sirve de referencia.
     expect(r.ahorroRepartiendo).toBe(0);
-  });
-});
-
-describe('historialDe', () => {
-  it('guarda donde convino cada producto', () => {
-    const r = evaluarCanasta(
-      [{ producto: producto(), ofertas: [oferta('alvi', 1090), oferta('jumbo', 1290)] }],
-      PERFIL_POR_DEFECTO,
-      { fecha: MARTES },
-    );
-    expect(historialDe(r)).toEqual({ 'leche-colun-semi-1l': 'alvi' });
-  });
-
-  it('omite los productos sin datos', () => {
-    const r = evaluarCanasta([{ producto: producto(), ofertas: [] }], PERFIL_POR_DEFECTO, { fecha: MARTES });
-    expect(historialDe(r)).toEqual({});
   });
 });
 

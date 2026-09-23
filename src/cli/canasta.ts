@@ -12,7 +12,19 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { TIENDAS, tienda } from '../adapters/index.js';
 import { traerOfertas } from '../canonico/traer.js';
 import { Descartes } from '../diagnostico.js';
-import { evaluarCanasta, historialDe, type EntradaCanasta, type Historial } from '../canasta/evaluar.js';
+import { evaluarCanasta, type EntradaCanasta } from '../canasta/evaluar.js';
+import {
+  anotar,
+  compararRegistros,
+  fechaISO,
+  leerHistorial,
+  minimoHistorico,
+  registroAnterior,
+  registroDesde,
+  tiendaAnterior,
+  type CambioPrecio,
+  type HistorialPrecios,
+} from '../canasta/historial.js';
 import { cargar, ofertasDe } from '../canonico/catalogo.js';
 import { nombreDia, parsearFechaLocal } from '../normalizar/fecha.js';
 import { escalasPendientes, informarEscalas } from '../precios/escalas.js';
@@ -49,11 +61,20 @@ if (catalogo.productos.length === 0) {
   process.exit(0);
 }
 
-let previo: Historial = {};
+let historial: HistorialPrecios;
 try {
-  previo = JSON.parse(await readFile(RUTA_HISTORIAL, 'utf8')) as Historial;
+  historial = leerHistorial(JSON.parse(await readFile(RUTA_HISTORIAL, 'utf8')));
 } catch {
-  // Primera corrida: sin historial no hay cambios que reportar.
+  // Primera corrida: sin historial no hay nada con que comparar.
+  historial = leerHistorial(undefined);
+}
+const hoy = fechaISO(fecha);
+
+// La tienda que convenia la ultima vez sale del propio historial de precios.
+const previo: Record<string, string> = {};
+for (const producto of catalogo.productos) {
+  const anterior = tiendaAnterior(historial, producto.id, hoy);
+  if (anterior) previo[producto.id] = anterior;
 }
 
 console.log(`\nCanasta de ${catalogo.productos.length} producto(s)  |  ${nombreDia(fecha)} ${fecha.toLocaleDateString('es-CL')}`);
@@ -79,6 +100,32 @@ for (const producto of catalogo.productos) {
 
 const resumen = evaluarCanasta(entradas, PERFIL_POR_DEFECTO, { fecha }, previo, { maximo });
 
+/**
+ * Cambios de precio respecto del ultimo registro de cada tienda.
+ *
+ * Es lo que el seguimiento por tienda ganadora no veia: un producto puede
+ * seguir conviniendo en la misma cadena y haber bajado, o haber estrenado un
+ * tramo mayorista que antes no existia.
+ */
+const cambiosPrecio: Array<{ producto: string; cambio: CambioPrecio; minimo?: ReturnType<typeof minimoHistorico> }> = [];
+
+for (const linea of resumen.lineas) {
+  for (const optimo of linea.ranking) {
+    const registro = registroDesde(optimo, fecha);
+    const anterior = registroAnterior(historial, linea.producto.id, registro.tienda, hoy);
+    const minimo = minimoHistorico(historial, linea.producto.id, registro.tienda, hoy);
+
+    if (anterior) {
+      const cambio = compararRegistros(anterior, registro);
+      const hayTramosDistintos = cambio.tramosNuevos.length > 0 || cambio.tramosIdos.length > 0;
+      if (cambio.direccion !== 'igual' || hayTramosDistintos) {
+        cambiosPrecio.push({ producto: linea.producto.nombre, cambio, minimo });
+      }
+    }
+    historial = anotar(historial, linea.producto.id, registro);
+  }
+}
+
 // Lo que cambio de tienda va primero: es lo unico que exige una decision.
 if (resumen.cambios.length > 0) {
   console.log('CAMBIOS DESDE LA ULTIMA VEZ\n');
@@ -97,6 +144,42 @@ if (resumen.cambios.length > 0) {
   }
 } else if (Object.keys(previo).length > 0) {
   console.log('Sin cambios de tienda desde la ultima vez.\n');
+}
+
+if (cambiosPrecio.length > 0) {
+  console.log('CAMBIOS DE PRECIO\n');
+  for (const { producto, cambio, minimo } of cambiosPrecio) {
+    const unidad = cambio.actual.base ?? 'un';
+    const antes = cambio.anterior.porMedida ?? cambio.anterior.unitario;
+    const ahora = cambio.actual.porMedida ?? cambio.actual.unitario;
+    const flecha = cambio.direccion === 'baja' ? 'bajo' : cambio.direccion === 'alza' ? 'subio' : 'igual';
+
+    console.log(`  ${producto}  (${cambio.tienda})`);
+    if (cambio.direccion !== 'igual') {
+      console.log(
+        `     ${flecha} ${cambio.porcentaje}%: ${clp(antes)}/${unidad} el ${cambio.anterior.fecha}` +
+          ` -> ${clp(ahora)}/${unidad} hoy`,
+      );
+    }
+    for (const t of cambio.tramosNuevos) {
+      console.log(`     tramo nuevo: desde ${t.min} un a ${clp(t.precio)} c/u`);
+    }
+    for (const t of cambio.tramosIdos) {
+      console.log(`     tramo que ya no esta: desde ${t.min} un a ${clp(t.precio)} c/u`);
+    }
+    // Una baja que coincide con otro sku puede ser otro articulo, no una oferta.
+    if (cambio.identidadCambio) {
+      console.log(
+        `     VERIFICAR: cambio el producto de referencia ` +
+          `(sku ${cambio.anterior.sku} -> ${cambio.actual.sku}); puede no ser una baja real`,
+      );
+    } else if (minimo && ahora < minimo.valor) {
+      console.log(`     es el mas bajo registrado (antes ${clp(minimo.valor)} el ${minimo.fecha}, ${minimo.registros} registros)`);
+    }
+    console.log();
+  }
+} else if (Object.keys(historial.registros).length > 0 && resumen.cambios.length === 0) {
+  console.log('Sin cambios de precio desde la ultima corrida.\n');
 }
 
 console.log('DETALLE\n');
@@ -156,5 +239,5 @@ if (descartes.total > 0) {
   else console.log(`\n(${descartes.total} descarte(s); corre con --diagnostico para verlos)`);
 }
 
-await writeFile(RUTA_HISTORIAL, JSON.stringify(historialDe(resumen), null, 2) + '\n');
-console.log(`\nHistorial actualizado en ${RUTA_HISTORIAL}\n`);
+await writeFile(RUTA_HISTORIAL, JSON.stringify(historial, null, 2) + '\n');
+console.log(`\nHistorial de precios actualizado en ${RUTA_HISTORIAL}\n`);
