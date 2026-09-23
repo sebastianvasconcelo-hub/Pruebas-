@@ -33,8 +33,12 @@ export async function traerOfertas(eq: Equivalencia, descartes?: Descartes): Pro
     try {
       const ofertas = await leerFicha(cfg, eq.url, { descartes });
       // La ficha puede no declarar su propia direccion, pero la acabamos de
-      // pedir: sin enlace, la recomendacion no se puede seguir.
-      if (ofertas.length > 0) return ofertas.map((o) => ({ ...o, url: o.url ?? eq.url }));
+      // pedir. Solo se le asigna cuando la pagina devolvio un unico producto:
+      // una ficha incrusta ademas productos relacionados, y darles a todos la
+      // url de la pagina haria que el calce por url eligiera uno de ellos.
+      if (ofertas.length > 0) {
+        return ofertas.length === 1 ? [{ ...ofertas[0]!, url: ofertas[0]!.url ?? eq.url }] : ofertas;
+      }
     } catch (e) {
       // La ficha puede mudarse de ruta; la busqueda sigue sirviendo.
       console.error(`  aviso: ficha de ${eq.tienda} fallo (${e instanceof Error ? e.message : e}), uso la busqueda`);

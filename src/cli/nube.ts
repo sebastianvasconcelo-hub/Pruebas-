@@ -26,6 +26,8 @@ interface Chequeo {
   ofertas?: number;
   detalle: string;
   cabeceras?: Record<string, string>;
+  /** Inicio del cuerpo cuando falla: cada WAF deja su firma en el texto. */
+  cuerpo?: string;
 }
 
 /** Cabeceras que delatan quien respondio: el sitio, su CDN o su WAF. */
@@ -44,8 +46,13 @@ async function pedir(url: string): Promise<{
   const inicio = Date.now();
   const res = await fetch(url, { headers: NAVEGADOR, signal: AbortSignal.timeout(30_000) });
   const cuerpo = await res.text();
+  // En un rechazo se guardan todas las cabeceras: las que identifican al WAF
+  // (x-iinfo, x-datadome, server: AkamaiGHost...) no estan en ninguna lista fija.
+  const todas = res.status >= 400;
   const cabeceras: Record<string, string> = {};
-  for (const [k, v] of res.headers) if (CABECERAS.test(k)) cabeceras[k] = v.slice(0, 80);
+  for (const [k, v] of res.headers) {
+    if (todas || CABECERAS.test(k)) cabeceras[k] = v.slice(0, 80);
+  }
   return {
     status: res.status,
     tipo: (res.headers.get('content-type') ?? '').split(';')[0]!,
@@ -53,6 +60,16 @@ async function pedir(url: string): Promise<{
     ms: Date.now() - inicio,
     cabeceras,
   };
+}
+
+/** Texto visible del cuerpo, sin etiquetas, para leer que dice el rechazo. */
+function extracto(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 240);
 }
 
 /** Explica un fallo en terminos de que hacer, no solo de que paso. */
@@ -75,12 +92,18 @@ async function chequear(
   try {
     const r = await pedir(url);
     const ofertas = r.status === 200 ? mapear(r.cuerpo) : [];
-    const base = diagnostico(r.status, r.cuerpo, ofertas.length);
+    const esControl = nombre.endsWith('portada');
+    const base = esControl
+      ? r.status === 200 && !DESAFIO.test(r.cuerpo)
+        ? 'ok'
+        : diagnostico(r.status, r.cuerpo, 1)
+      : diagnostico(r.status, r.cuerpo, ofertas.length);
     const problema = base === 'ok' ? validar(ofertas) : base;
+    const ok = problema === null;
     return {
       nombre,
       url,
-      ok: problema === null,
+      ok,
       status: r.status,
       tipo: r.tipo,
       kb: Math.round(r.cuerpo.length / 1024),
@@ -88,6 +111,7 @@ async function chequear(
       ofertas: ofertas.length,
       detalle: problema ?? `${ofertas.length} ofertas`,
       cabeceras: r.cabeceras,
+      ...(ok ? {} : { cuerpo: extracto(r.cuerpo) }),
     };
   } catch (e) {
     return { nombre, url, ok: false, detalle: `sin respuesta: ${e instanceof Error ? e.message : e}` };
@@ -109,6 +133,12 @@ const jumbo = tienda('jumbo')!;
 const consulta = 'leche colun';
 
 const resultados: Chequeo[] = [];
+
+// Control: si la portada tambien se rechaza, el bloqueo es a la IP o al pais,
+// no a una ruta; eso descarta arreglarlo cambiando de url o de cabeceras.
+resultados.push(
+  await chequear('Alvi: portada', `https://${alvi.host}/`, () => [], () => null),
+);
 
 resultados.push(
   await chequear('Alvi: busqueda', urlBusqueda(alvi, consulta)!, (h) => mapearHtml(alvi, h), (o) =>
@@ -137,9 +167,13 @@ if (busquedaJumbo.ok) {
   }
 }
 resultados.push(
-  await chequear('Jumbo: ficha', urlFichaJumbo, (h) => mapearFicha(jumbo, h), (o) =>
-    o[0] && o[0].precioLista > 0 ? null : 'respondio pero sin precio de lista',
-  ),
+  await chequear('Jumbo: ficha', urlFichaJumbo, (h) => mapearFicha(jumbo, h), (o) => {
+    // La ficha trae ademas productos relacionados: lo que importa es que el
+    // principal sea identificable, y es el unico que queda con url.
+    const principales = o.filter((x) => x.url !== undefined);
+    if (principales.length !== 1) return `${principales.length} productos con url; se esperaba exactamente 1`;
+    return principales[0]!.precioLista > 0 ? null : 'el producto principal no trae precio de lista';
+  }),
 );
 
 // Salida legible en la terminal.
@@ -152,12 +186,14 @@ for (const r of resultados) {
   if (r.cabeceras && Object.keys(r.cabeceras).length > 0) {
     console.log(`       ${Object.entries(r.cabeceras).map(([k, v]) => `${k}: ${v}`).join(' | ')}`);
   }
+  if (r.cuerpo) console.log(`       cuerpo: "${r.cuerpo}"`);
 }
 
-const todas = resultados.every((r) => r.ok);
+const rutas = resultados.filter((r) => !r.nombre.endsWith('portada'));
+const todas = rutas.every((r) => r.ok);
 const veredicto = todas
   ? 'VIABLE: el scraping puede correr en la nube.'
-  : resultados.some((r) => r.ok)
+  : rutas.some((r) => r.ok)
     ? 'PARCIAL: algunas rutas responden desde la nube y otras no.'
     : 'NO VIABLE desde esta red: el scraping tendria que correr en un PC con IP residencial.';
 console.log(`\n${veredicto}\n`);

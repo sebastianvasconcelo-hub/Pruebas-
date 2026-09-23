@@ -105,3 +105,43 @@ describe('la url de la ficha siempre debe llegar', () => {
     expect(mapearFichaJumbo(JUMBO, bloques)[0]!.url).toBeUndefined();
   });
 });
+
+describe('una ficha con productos relacionados', () => {
+  // La ficha real de Jumbo devolvio 29 items: el producto y 28 relacionados,
+  // todos con la misma forma. Solo hay un bloque Product, el del principal.
+  const PRODUCT_LD = {
+    '@type': 'Product',
+    name: 'Leche Colun Semidescremada 1 L',
+    sku: 'OTRO-ID',
+    brand: { name: 'Colun' },
+    url: 'https://www.jumbo.cl/leche-colun-semi-descremada-1-litro/p',
+    offers: { price: 1290 },
+  };
+  const item = (skuId: string, name: string, price: number) => ({ skuId, name, price, listPrice: price, stock: true });
+  const bloques = [
+    PRODUCT_LD,
+    [{ product: { items: [item('R1', 'Leche Soprole Entera 1 L', 1190)] } }],
+    [{ product: { items: [item('P1', 'Leche Colun Semidescremada 1 L', 1290)] } }],
+    [{ product: { items: [item('R2', 'Leche Loncoleche Descremada 1 L', 1150)] } }],
+  ];
+
+  it('le da la url y la marca solo al producto principal', () => {
+    const ofertas = mapearFichaJumbo(JUMBO, bloques);
+    const principal = ofertas.find((o) => o.sku === 'P1')!;
+    expect(principal.url).toBe('https://www.jumbo.cl/leche-colun-semi-descremada-1-litro/p');
+    expect(principal.marca).toBe('Colun');
+  });
+
+  it('los relacionados quedan sin url: no son el producto de la pagina', () => {
+    const ofertas = mapearFichaJumbo(JUMBO, bloques);
+    expect(ofertas.filter((o) => o.sku !== 'P1').every((o) => o.url === undefined)).toBe(true);
+  });
+
+  it('el calce por url no puede elegir un relacionado', () => {
+    // Antes, todos heredaban la url de la pagina y ofertasDe se quedaba con el
+    // primero que la tuviera, que aqui era la leche Soprole.
+    const ofertas = mapearFichaJumbo(JUMBO, bloques);
+    const conUrl = ofertas.filter((o) => o.url === PRODUCT_LD.url);
+    expect(conUrl.map((o) => o.sku)).toEqual(['P1']);
+  });
+});

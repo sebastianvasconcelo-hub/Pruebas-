@@ -80,21 +80,42 @@ function marcaDe(brand: unknown): string | undefined {
   return undefined;
 }
 
+/** Para comparar nombres entre el schema.org y el objeto interno. */
+function normalizarNombre(t: string): string {
+  return t
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
 /**
  * Datos de schema.org de la misma ficha, que aportan marca y url.
  *
- * Se prefiere el bloque cuyo sku coincide, pero si ninguno coincide se usa el
- * unico Product de la pagina: una ficha describe un producto, y el sku del
- * schema.org no siempre es el mismo identificador que el del objeto interno.
- * Quedarse sin url por esa discrepancia dejaria al usuario sin el enlace para
- * ir a comprar, que es la mitad de la utilidad.
+ * El bloque Product describe UN producto: el principal de la pagina. Pero la
+ * ficha incrusta ademas decenas de productos relacionados con la misma forma
+ * que el principal, asi que no basta con que haya un solo Product para darle
+ * su url a cualquier item. Se le asigna solo al item que le corresponde: por
+ * sku si coincide, o por nombre, que en la ficha real es identico en ambos
+ * lados. Un producto relacionado queda sin url, que es la verdad.
  */
-function datosLd(bloques: unknown[], sku: string): { marca?: string; url?: string } {
+function datosLd(
+  bloques: unknown[],
+  sku: string,
+  nombre: string,
+  unicoItem: boolean,
+): { marca?: string; url?: string } {
   const productos = bloques.filter(
     (b): b is Record<string, unknown> =>
       !!b && typeof b === 'object' && !Array.isArray(b) && (b as Record<string, unknown>)['@type'] === 'Product',
   );
-  const elegido = productos.find((o) => o.sku === sku) ?? (productos.length === 1 ? productos[0] : undefined);
+  const elegido =
+    productos.find((o) => o.sku === sku) ??
+    productos.find((o) => typeof o.name === 'string' && normalizarNombre(o.name) === normalizarNombre(nombre)) ??
+    // Sin sku ni nombre que coincidan, solo es seguro cuando la pagina no trae
+    // otros productos con los que confundirlo.
+    (unicoItem && productos.length === 1 ? productos[0] : undefined);
   if (!elegido) return {};
   return {
     marca: marcaDe(elegido.brand),
@@ -112,7 +133,10 @@ export function mapearFichaJumbo(
   const ofertas: Oferta[] = [];
   const vistos = new Set<string>();
 
-  for (const item of bloques.flatMap((b) => recolectarItems(b))) {
+  const items = bloques.flatMap((b) => recolectarItems(b));
+  const skusDistintos = new Set(items.map((i) => i.skuId)).size;
+
+  for (const item of items) {
     const sku = item.skuId!;
     const nombre = item.name;
     if (!nombre) {
@@ -137,7 +161,7 @@ export function mapearFichaJumbo(
       });
     }
 
-    const { marca, url } = datosLd(bloques, sku);
+    const { marca, url } = datosLd(bloques, sku, nombre, skusDistintos === 1);
 
     ofertas.push({
       tienda: cfg.id,
